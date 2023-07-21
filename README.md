@@ -1,2 +1,2 @@
-# go-micro-adapter
-go-micro-adapter
+# go-micro
+go-micro
