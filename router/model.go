@@ -2,16 +2,17 @@ package router
 
 import (
 	"github.com/fabriqs/go-micro/crypto"
-	"github.com/fabriqs/go-micro/h"
 	"net/http"
 )
 
+// AuthKey is used in adapters
+//
+//goland:noinspection GoUnusedConst
 const AuthKey = "user"
 
 type Ctx interface {
 	Bind(interface{}) error
 	Send(interface{}) error
-	// TODO() error
 	NewTechnicalError(string) error
 	Forbidden(message string) error
 	Unauthorized(message string) error
@@ -67,14 +68,8 @@ type Cfg struct {
 	OnShutdown func()
 }
 
-func TODO() interface{} {
-	return h.Map{
-		"status": "TODO",
-	}
-}
-
 type MiddlewareFunc func(ctx Ctx) error
 
 type RouteFilter func(handler HandlerFunc) HandlerFunc
 
-type HandlerFunc func(Ctx) (interface{}, error)
+type HandlerFunc func(Ctx) (any, error)

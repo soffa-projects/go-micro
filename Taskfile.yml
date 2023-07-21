@@ -6,7 +6,7 @@ tasks:
       - go mod tidy
   install:
     cmds:
-      - go get -u ./...
+      - go mod tidy
   upgrade:
     cmds:
       - go get -u ./...
