@@ -1,0 +1,12 @@
+version: "3"
+
+tasks:
+  tidy:
+    cmds:
+      - go mod tidy
+  install:
+    cmds:
+      - go get -u ./...
+  upgrade:
+    cmds:
+      - go get -u ./...
