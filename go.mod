@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/gavv/httpexpect/v2 v2.15.0
 	github.com/golang-jwt/jwt/v5 v5.0.0
+	github.com/jinzhu/copier v0.3.5
 	github.com/rs/xid v1.5.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4

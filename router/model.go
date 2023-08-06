@@ -2,6 +2,7 @@ package router
 
 import (
 	"github.com/fabriqs/go-micro/crypto"
+	"github.com/fabriqs/go-micro/schema"
 	"net/http"
 )
 
@@ -16,7 +17,7 @@ type Ctx interface {
 	NewTechnicalError(string) error
 	Forbidden(message string) error
 	Unauthorized(message string) error
-	GetAuthentication() *Authentication
+	GetAuthentication() *schema.Authentication
 	IsAuthenticated() bool
 	// RequireAuthentication()
 }
@@ -35,21 +36,6 @@ type Base interface {
 	PATCH(path string, handler HandlerFunc, filters ...MiddlewareFunc)
 	GET(path string, handler HandlerFunc, filters ...MiddlewareFunc)
 	DELETE(path string, handler HandlerFunc, filters ...MiddlewareFunc)
-}
-
-type AuthToken struct {
-	Issuer   string `json:"token"`
-	Audience string `json:"audience"`
-}
-
-type Authentication struct {
-	Token         *AuthToken
-	Authenticated bool
-	Username      string
-	Email         string
-	UserId        string
-	Roles         []string
-	Permissions   []string
 }
 
 type JwtCfg struct {
@@ -73,3 +59,9 @@ type MiddlewareFunc func(ctx Ctx) error
 type RouteFilter func(handler HandlerFunc) HandlerFunc
 
 type HandlerFunc func(Ctx) (any, error)
+
+type ErrorResponse struct {
+	Kind    string `json:"kind,omitempty"`
+	Error   string `json:"error,omitempty"`
+	Details any    `json:"details,omitempty"`
+}

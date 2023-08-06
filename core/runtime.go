@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/fabriqs/go-micro/database"
+	"github.com/fabriqs/go-micro/db"
 	"github.com/fabriqs/go-micro/di"
 	"github.com/fabriqs/go-micro/router"
 	log "github.com/sirupsen/logrus"
@@ -26,7 +26,7 @@ func (a *App) Run(addr string) {
 	defer func() {
 		_ = a.Router.Shutdown()
 
-		_ = di.Inject(func(db database.DB) {
+		_ = di.Inject(func(db db.DB) {
 			if db != nil {
 				db.Close()
 			}
@@ -44,7 +44,7 @@ func (a *App) Run(addr string) {
 }
 
 func (a *App) Cleanup() {
-	_ = di.Inject(func(db database.DB) {
+	_ = di.Inject(func(db db.DB) {
 		db.Close()
 	})
 }

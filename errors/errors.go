@@ -2,36 +2,45 @@ package errors
 
 import "fmt"
 
-type FunctionalError struct {
+type Managed struct {
+	Kind    string `json:"kind"`
 	Message string `json:"message,omitempty"`
 	Details any    `json:"details,omitempty"`
+}
+
+type FunctionalError struct {
+	Managed
+}
+
+type ConflictError struct {
+	Managed
 }
 
 type TechnicalError struct {
-	Message string `json:"message,omitempty"`
-	Details any    `json:"details,omitempty"`
+	Managed
 }
 
 type ResourceNotFoundError struct {
-	Message string `json:"message,omitempty"`
-	Details any    `json:"details,omitempty"`
+	Managed
 }
 
 type ForbiddenError struct {
-	Message string `json:"message,omitempty"`
-	Details any    `json:"details,omitempty"`
+	Managed
 }
 
 type UnauthorizedError struct {
-	Message string `json:"message,omitempty"`
-	Details any    `json:"details,omitempty"`
+	Managed
+}
+
+func (e *Managed) Error() string {
+	return fmt.Sprintf("Managed %s", e.Message)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
 
 // Functional error
 func Functional(message string, details ...any) error {
-	return &FunctionalError{Message: message, Details: getDetails(details...)}
+	return &FunctionalError{Managed{Kind: "error.functional", Message: message, Details: getDetails(details...)}}
 }
 
 func (e *FunctionalError) Error() string {
@@ -42,7 +51,7 @@ func (e *FunctionalError) Error() string {
 
 // Technical error
 func Technical(message string, details ...any) error {
-	return &TechnicalError{Message: message, Details: getDetails(details...)}
+	return &TechnicalError{Managed{Kind: "error.technical", Message: message, Details: getDetails(details...)}}
 }
 
 func (e *TechnicalError) Error() string {
@@ -53,7 +62,7 @@ func (e *TechnicalError) Error() string {
 
 // ResourceNotFound error
 func ResourceNotFound(message string, details ...any) error {
-	return &ResourceNotFoundError{Message: message, Details: getDetails(details...)}
+	return &ResourceNotFoundError{Managed{Kind: "error.resource_not_found", Message: message, Details: getDetails(details...)}}
 }
 
 func (e *ResourceNotFoundError) Error() string {
@@ -64,7 +73,7 @@ func (e *ResourceNotFoundError) Error() string {
 
 // Forbidden error
 func Forbidden(message string, details ...any) error {
-	return &ForbiddenError{Message: message, Details: getDetails(details...)}
+	return &ForbiddenError{Managed{Kind: "error.forbidden", Message: message, Details: getDetails(details...)}}
 }
 
 func (e *ForbiddenError) Error() string {
@@ -75,11 +84,22 @@ func (e *ForbiddenError) Error() string {
 
 // Unauthorized error
 func Unauthorized(message string, details ...any) error {
-	return &UnauthorizedError{Message: message, Details: getDetails(details...)}
+	return &UnauthorizedError{Managed{Kind: "error.unauthorized", Message: message, Details: getDetails(details...)}}
 }
 
 func (e *UnauthorizedError) Error() string {
 	return fmt.Sprintf("UnauthorizedError %s", e.Message)
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
+// Conflict error
+func Conflict(message string, details ...any) error {
+	return &ConflictError{Managed{Kind: "error.conflict", Message: message, Details: getDetails(details...)}}
+}
+
+func (e *ConflictError) Error() string {
+	return fmt.Sprintf("Conflict %s", e.Message)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

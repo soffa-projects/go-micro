@@ -25,6 +25,7 @@ type HttpRequest struct {
 	path          string
 	body          interface{}
 	internal      *httpexpect.Expect
+	params        any
 	authorization string
 }
 
@@ -76,7 +77,7 @@ func (f *HttpExpect) DELETE(path string, body ...interface{}) *HttpRequest {
 	return f.request(http.MethodDelete, path, body...)
 }
 
-func (f *HttpExpect) PATH(path string, body ...interface{}) *HttpRequest {
+func (f *HttpExpect) PATCH(path string, body ...interface{}) *HttpRequest {
 	return f.request(http.MethodPatch, path, body...)
 }
 
@@ -93,10 +94,18 @@ func (f *HttpExpect) request(method string, path string, body ...interface{}) *H
 	return r
 }
 
+func (r *HttpRequest) Params(params any) *HttpRequest {
+	r.params = params
+	return r
+}
+
 func (r *HttpRequest) Expect() *HttpTestResult {
 	req := r.internal.Request(r.method, r.path)
 	if r.body != nil {
 		req = req.WithJSON(r.body)
+	}
+	if r.params != nil {
+		req = req.WithQueryObject(r.params)
 	}
 	if r.authorization != "" {
 		req = req.WithHeader("Authorization", r.authorization)
@@ -114,6 +123,11 @@ func (r *HttpRequest) BearerAuth(token string) *HttpRequest {
 
 func (r *HttpTestResult) IsOK() *HttpTestResult {
 	r.result.Status(http.StatusOK)
+	return r
+}
+
+func (r *HttpTestResult) IsConflict() *HttpTestResult {
+	r.result.Status(http.StatusConflict)
 	return r
 }
 
@@ -167,6 +181,11 @@ func (v *ObjectExpect) Path(path string) *ValueExpect {
 	}
 }
 
+func (v *ObjectExpect) NotContainsKey(path string) *ObjectExpect {
+	v.value.NotContainsKey(path)
+	return v
+}
+
 func (v *ValueExpect) IsString() *ValueExpect {
 	return &ValueExpect{
 		value: v.value.IsString(),
@@ -186,6 +205,11 @@ func (v *ArrayExpect) IsEmpty() *ArrayExpect {
 	return v
 }
 
+func (v *ArrayExpect) NotEmpty() *ArrayExpect {
+	v.value.NotEmpty()
+	return v
+}
+
 func (v *ArrayExpect) Length() *NumberExect {
 	return &NumberExect{value: v.value.Length()}
 }
@@ -199,6 +223,17 @@ func (v *StringExpect) IsEqual(value string) *StringExpect {
 	v.value.IsEqual(value)
 	return v
 }
+
+func (v *StringExpect) HasPrefix(value string) *StringExpect {
+	v.value.HasPrefix(value)
+	return v
+}
+
+func (v *StringExpect) HasSuffix(value string) *StringExpect {
+	v.value.HasSuffix(value)
+	return v
+}
+
 func (v *StringExpect) NotEqual(value string) *StringExpect {
 	v.value.NotEqual(value)
 	return v
@@ -206,5 +241,10 @@ func (v *StringExpect) NotEqual(value string) *StringExpect {
 
 func (v *StringExpect) NotEmpty() *StringExpect {
 	v.value.NotEmpty()
+	return v
+}
+
+func (v *StringExpect) IsEmpty() *StringExpect {
+	v.value.IsEmpty()
 	return v
 }

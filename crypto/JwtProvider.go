@@ -1,12 +1,11 @@
 package crypto
 
 import (
+	"github.com/fabriqs/go-micro/dates"
 	"github.com/golang-jwt/jwt/v5"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
-
-const JwtProviderKey = "jwt_provider"
 
 type JwtProvider interface {
 	Create(subject string, issuer string, audience *string, claims map[string]string, ttl time.Duration) (string, error)
@@ -31,8 +30,11 @@ func (p *DefaultJwtProvider) Create(subject string, issuer string, audience *str
 	if audience != nil {
 		claims["aud"] = *audience
 	}
-	claims["iat"] = time.Now().Unix()
-	claims["exp"] = time.Now().Add(ttl).Unix()
+	if issuer != "" {
+		claims["iss"] = issuer
+	}
+	claims["iat"] = dates.Now().Unix()
+	claims["exp"] = dates.Now().Add(ttl).Unix()
 	for k, v := range clms {
 		claims[k] = v
 	}

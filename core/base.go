@@ -1,7 +1,7 @@
 package core
 
 import (
-	"github.com/fabriqs/go-micro/database"
+	"github.com/fabriqs/go-micro/db"
 	"github.com/fabriqs/go-micro/policy"
 	"github.com/fabriqs/go-micro/router"
 )
@@ -20,7 +20,7 @@ type App struct {
 
 type Env struct {
 	context map[string]interface{}
-	DB      database.DB
+	DB      db.DB
 	Policy  policy.Manager
 }
 
@@ -28,7 +28,7 @@ type AppCfg struct {
 	Name     string
 	Features []Feature
 	Router   router.R
-	DB       database.DB
+	DB       db.DB
 }
 
 func NewEnv(env *Env) *Env {
