@@ -196,6 +196,13 @@ func (v *ValueExpect) String() *StringExpect {
 		value: v.value.String(),
 	}
 }
+
+func (v *ValueExpect) Number() *NumberExect {
+	return &NumberExect{
+		value: v.value.Number(),
+	}
+}
+
 func (v *StringExpect) Raw() string {
 	return v.value.Raw()
 }
@@ -214,7 +221,7 @@ func (v *ArrayExpect) Length() *NumberExect {
 	return &NumberExect{value: v.value.Length()}
 }
 
-func (v *NumberExect) IsEqual(value int) *NumberExect {
+func (v *NumberExect) IsEqual(value interface{}) *NumberExect {
 	v.value.IsEqual(value)
 	return v
 }

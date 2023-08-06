@@ -8,7 +8,7 @@ type AuthToken struct {
 type Authentication struct {
 	Token         *AuthToken
 	Authenticated bool
-	Username      string
+	Name          string
 	Email         string
 	UserId        string
 	Roles         []string

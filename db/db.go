@@ -22,11 +22,11 @@ type DB interface {
 
 	FindBy(target any, where string, args ...any) error
 	FirstBy(target any, where string, args ...any) error
-	CountBy(target any, where string, args ...any) (int64, error)
 	ExistBy(target any, where string, args ...any) (bool, error)
 	DeleteBy(target any, where string, args ...any) (int64, error)
 	Query(target any, query string, args ...any) error
 	Count(model any) (int64, error)
+	CountBy(model any, where string, args ...any) (int64, error)
 	FindAll(target any) error
 	FindAllSorted(target any, orderBy string) error
 	FindBySorted(target any, orderBy string, where string, args ...any) error
@@ -85,6 +85,11 @@ func W(where string, args ...any) Criteria {
 func (r *Repo[T]) Count() (int64, error) {
 	var model T
 	return r.DB.Count(model)
+}
+
+func (r *Repo[T]) CountBy(where string, args ...any) (int64, error) {
+	var model T
+	return r.DB.CountBy(model, where, args...)
 }
 
 func (r *Repo[T]) FindById(id *string) (*T, error) {

@@ -8,13 +8,13 @@ import (
 
 type Feature struct {
 	Name string
-	Init func(router router.R) error
+	Init func() error
 }
 
 type App struct {
 	Name     string
 	Features []Feature
-	Router   router.R
+	// Router   router.R
 	//Env      *Env
 }
 

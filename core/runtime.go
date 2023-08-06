@@ -4,7 +4,6 @@ import (
 	"github.com/fabriqs/go-micro/db"
 	"github.com/fabriqs/go-micro/di"
 	"github.com/fabriqs/go-micro/router"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,12 +18,16 @@ func (a *App) Run(addr string) {
 
 	// start the server
 	go func() {
-		_ = a.Router.Start("0.0.0.0:" + addr)
+		_ = di.Inject(func(r router.R) {
+			_ = r.Start("0.0.0.0:" + addr)
+		})
 	}()
 
 	// run the cleanup after the server is terminated
 	defer func() {
-		_ = a.Router.Shutdown()
+		_ = di.Inject(func(r router.R) {
+			_ = r.Shutdown()
+		})
 
 		_ = di.Inject(func(db db.DB) {
 			if db != nil {
@@ -49,17 +52,12 @@ func (a *App) Cleanup() {
 	})
 }
 
-func NewApp(name string, r router.R, features []Feature) *App {
-	for _, feat := range features {
-		err := feat.Init(r)
-		if err != nil {
-			log.Fatalf("failed to init feature %s.\n%v", feat.Name, err)
-		}
-	}
+func NewApp(name string, features []Feature) *App {
+
 	return &App{
 		Name:     name,
 		Features: features,
-		Router:   r,
+		//Router:   r,
 	}
 }
 
