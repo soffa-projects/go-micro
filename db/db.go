@@ -2,7 +2,9 @@ package db
 
 import (
 	"embed"
+	serrors "errors"
 	"github.com/fabriqs/go-micro/errors"
+	"github.com/fabriqs/go-micro/h"
 )
 
 type Cfg struct {
@@ -27,6 +29,7 @@ type DB interface {
 	Query(target any, query string, args ...any) error
 	Count(model any) (int64, error)
 	CountBy(model any, where string, args ...any) (int64, error)
+	Patch(model interface{}, where string, args []interface{}, data map[string]interface{}) (int64, error)
 	FindAll(target any) error
 	FindAllSorted(target any, orderBy string) error
 	FindBySorted(target any, orderBy string, where string, args ...any) error
@@ -62,6 +65,12 @@ type Repo[T any] struct {
 	Merge         func(entity *T, existing T)
 }
 
+type Lifecyle[T any] struct {
+	FindExisting func() (*T, error)
+	Patch        func(existing *T, model T)
+	PreCreate    func()
+}
+
 type Entity[T any] interface {
 	PreCreate()
 }
@@ -87,6 +96,11 @@ func (r *Repo[T]) Count() (int64, error) {
 	return r.DB.Count(model)
 }
 
+func (r *Repo[T]) Patch(id string, data h.Map) (int64, error) {
+	var model T
+	return r.DB.Patch(model, "id=?", []any{id}, data)
+}
+
 func (r *Repo[T]) CountBy(where string, args ...any) (int64, error) {
 	var model T
 	return r.DB.CountBy(model, where, args...)
@@ -95,6 +109,9 @@ func (r *Repo[T]) CountBy(where string, args ...any) (int64, error) {
 func (r *Repo[T]) FindById(id *string) (*T, error) {
 	var model T
 	err := r.DB.FirstBy(&model, "id=?", id)
+	if serrors.Is(err, ErrRecordNotFound) {
+		return nil, nil
+	}
 	return &model, err
 }
 
@@ -125,16 +142,6 @@ func (r *Repo[T]) Save(id *string, model T) (T, error) {
 	}
 }
 
-/*
-	func (r *Repo[T]) Merge(entity *T, existing T) error {
-		if e, ok := reflect.ValueOf(entity).Interface().(Entity[T]); ok {
-			e.PreCreate()
-			e.Patch(existing)
-		}
-		err := r.Update(entity)
-		return err
-	}
-*/
 func (r *Repo[T]) Update(data T) (T, error) {
 	err := r.DB.Save(&data)
 	return data, err
@@ -200,12 +207,6 @@ func (r *Repo[T]) FindBy(where string, args ...any) ([]T, error) {
 	return model, err
 }
 
-type Lifecyle[T any] struct {
-	FindExisting func() (*T, error)
-	Patch        func(existing *T, model T)
-	PreCreate    func()
-}
-
 /*
 func (r *Repo[T]) Merge(model *T, lc Lifecyle[T]) (*T, error) {
 	if existing, err := lc.FindExisting(); err != nil {
@@ -254,4 +255,9 @@ func (r *Repo[T]) DeleteById(id string) error {
 func (r *Repo[T]) Exists(cr Criteria) (bool, error) {
 	var model T
 	return r.DB.Exists(model, cr)
+}
+
+func (r *Repo[T]) ExistsBy(where string, args ...interface{}) (bool, error) {
+	var model T
+	return r.DB.Exists(model, W(where, args...))
 }
