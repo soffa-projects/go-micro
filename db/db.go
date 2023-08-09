@@ -24,8 +24,9 @@ type DB interface {
 
 	FindBy(target any, where string, args ...any) error
 	FirstBy(target any, where string, args ...any) error
-	ExistBy(target any, where string, args ...any) (bool, error)
-	DeleteBy(target any, where string, args ...any) (int64, error)
+	FirstBySorted(target any, orderBy string, where string, args ...any) error
+	ExistBy(model any, where string, args ...any) (bool, error)
+	DeleteBy(model any, where string, args ...any) (int64, error)
 	Query(target any, query string, args ...any) error
 	Count(model any) (int64, error)
 	CountBy(model any, where string, args ...any) (int64, error)
@@ -106,7 +107,7 @@ func (r *Repo[T]) CountBy(where string, args ...any) (int64, error) {
 	return r.DB.CountBy(model, where, args...)
 }
 
-func (r *Repo[T]) FindById(id *string) (*T, error) {
+func (r *Repo[T]) FindById(id string) (*T, error) {
 	var model T
 	err := r.DB.FirstBy(&model, "id=?", id)
 	if serrors.Is(err, ErrRecordNotFound) {
@@ -130,7 +131,7 @@ func (r *Repo[T]) Save(id *string, model T) (T, error) {
 		return r.Create(model)
 	}
 
-	if existing, err := r.FindById(id); err != nil {
+	if existing, err := r.FindById(*id); err != nil {
 		return model, err
 	} else if existing == nil {
 		return model, errors.ResourceNotFound("record_not_found")
@@ -174,15 +175,15 @@ func (r *Repo[T]) Fetch(cr Criteria) ([]T, error) {
 	return target, res.Error
 }
 
-func (r *Repo[T]) Create(data T) (T, error) {
+func (r *Repo[T]) Create(record T) (T, error) {
 	/*if e, ok := reflect.ValueOf(data).Interface().(Entity[T]); ok {
 		e.PreCreate()
 	}*/
 	if r.PreCreate != nil {
-		r.PreCreate(&data)
+		r.PreCreate(&record)
 	}
-	err := r.DB.Create(&data)
-	return data, err
+	err := r.DB.Create(&record)
+	return record, err
 }
 
 func (r *Repo[T]) FindAll() ([]T, error) {
@@ -231,6 +232,15 @@ func (r *Repo[T]) FirstBy(where string, args ...any) (*T, error) {
 	}
 }
 
+func (r *Repo[T]) FirstBySorted(orderBy string, where string, args ...any) (*T, error) {
+	model := new(T)
+	if err := r.DB.FirstBySorted(model, orderBy, where, args...); err == ErrRecordNotFound {
+		return nil, nil
+	} else {
+		return model, err
+	}
+}
+
 func (r *Repo[T]) FirstById(value any) (T, error) {
 	var model T
 	if err := r.DB.FirstBy(&model, "id=?", value); err == ErrRecordNotFound {
@@ -249,6 +259,12 @@ func (r *Repo[T]) FindAllSorted(sorted string) ([]T, error) {
 func (r *Repo[T]) DeleteById(id string) error {
 	var model T
 	_, err := r.DB.DeleteBy(model, "id = ?", id)
+	return err
+}
+
+func (r *Repo[T]) DeleteBy(where string, args ...interface{}) error {
+	var model T
+	_, err := r.DB.DeleteBy(model, where, args...)
 	return err
 }
 

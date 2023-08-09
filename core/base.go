@@ -8,7 +8,7 @@ import (
 
 type Feature struct {
 	Name string
-	Init func() error
+	Init func(conf interface{}) error
 }
 
 type App struct {
@@ -49,3 +49,4 @@ func (e *Env) Get(key string) interface{} {
 	}
 	return nil
 }
+

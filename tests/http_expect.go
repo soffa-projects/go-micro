@@ -186,6 +186,11 @@ func (v *ObjectExpect) NotContainsKey(path string) *ObjectExpect {
 	return v
 }
 
+func (v *ObjectExpect) ContainsKey(path string) *ObjectExpect {
+	v.value.ContainsKey(path)
+	return v
+}
+
 func (v *ValueExpect) IsString() *ValueExpect {
 	return &ValueExpect{
 		value: v.value.IsString(),
