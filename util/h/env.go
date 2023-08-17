@@ -2,12 +2,12 @@ package h
 
 import (
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
+	"os"
 )
 
 func GetEnv(keys ...string) string {
 	for _, key := range keys {
-		if value := viper.GetString(key); value != "" {
+		if value := os.Getenv(key); value != "" {
 			return value
 		}
 	}
@@ -15,7 +15,7 @@ func GetEnv(keys ...string) string {
 }
 
 func RequireEnv(key string) string {
-	value := viper.GetString(key)
+	value := os.Getenv(key)
 	if value == "" {
 		log.Fatalf("Missing env varaible: %s", key)
 	}

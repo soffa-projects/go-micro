@@ -9,7 +9,6 @@ require (
 	github.com/jinzhu/copier v0.3.5
 	github.com/rs/xid v1.5.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/dig v1.17.0
 
