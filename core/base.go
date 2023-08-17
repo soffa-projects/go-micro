@@ -1,52 +1,52 @@
-package core
+package micro
 
-import (
-	"github.com/fabriqs/go-micro/db"
-	"github.com/fabriqs/go-micro/policy"
-	"github.com/fabriqs/go-micro/router"
-)
+import "github.com/fabriqs/go-micro/messaging"
 
 type Feature struct {
 	Name string
-	Init func(conf interface{}) error
+	//@deprecated
+	Init func(env *Env) error
 }
 
 type App struct {
 	Name     string
 	Features []Feature
-	// Router   router.R
-	//Env      *Env
+	// Router   router.Router
+	Env *Env
 }
 
 type Env struct {
-	context map[string]interface{}
-	DB      db.DB
-	Policy  policy.Manager
+	Ctx
+	Conf interface{}
+	//
+	Router Router
+	//Policy    policy.Manager
+	Scheduler  Scheduler
+	DataSource DataSource
+	Mailer     messaging.Mailer
 }
 
 type AppCfg struct {
 	Name     string
 	Features []Feature
-	Router   router.R
-	DB       db.DB
+	Router   Router
+	DB       DataSource
 }
 
-func NewEnv(env *Env) *Env {
-	return &Env{
-		context: map[string]interface{}{},
-		DB:      env.DB,
-		Policy:  env.Policy,
-	}
+func (e *Env) DB() DataSource {
+	return e.DataSource
 }
 
-func (e *Env) Set(key string, value interface{}) {
-	e.context[key] = value
+func (e *Env) Config() interface{} {
+	return e.Conf
 }
 
-func (e *Env) Get(key string) interface{} {
-	if val, ok := e.context[key]; ok {
-		return val
-	}
-	return nil
+func (e *Env) Tx(callback func(tx DataSource) (interface{}, error)) (interface{}, error) {
+	var result interface{}
+	err := e.DB().Transaction(func(tx DataSource) error {
+		result0, err0 := callback(tx)
+		result = result0
+		return err0
+	})
+	return result, err
 }
-

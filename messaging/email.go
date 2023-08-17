@@ -1,10 +1,13 @@
 package messaging
 
-import "github.com/fabriqs/go-micro/h"
+import (
+	"github.com/fabriqs/go-micro/util/h"
+)
 
 type EmailAddress struct {
 	Name    string
 	Address string
+	Primary bool
 }
 
 type Email struct {
@@ -16,6 +19,6 @@ type Email struct {
 	TemplateData h.Map
 }
 
-type EmailSender interface {
+type Mailer interface {
 	Send(message Email) error
 }
