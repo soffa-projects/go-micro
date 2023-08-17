@@ -5,25 +5,22 @@ import "github.com/fabriqs/go-micro/messaging"
 type Feature struct {
 	Name string
 	//@deprecated
-	Init func(env *Env) error
+	Init func(app *App) error
 }
 
 type App struct {
-	Name     string
-	Features []Feature
-	// Router   router.Router
-	Env *Env
+	Name      string
+	Features  []Feature
+	Router    Router
+	Scheduler Scheduler
+	Mailer    messaging.Mailer
+	Env       *Env
 }
 
 type Env struct {
 	Ctx
-	Conf interface{}
-	//
-	Router Router
-	//Policy    policy.Manager
-	Scheduler  Scheduler
+	Conf       interface{}
 	DataSource DataSource
-	Mailer     messaging.Mailer
 }
 
 type AppCfg struct {

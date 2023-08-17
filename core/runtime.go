@@ -9,45 +9,6 @@ import (
 	"time"
 )
 
-func (a *App) AfterPropertiesSet() {
-	for _, feat := range a.Features {
-		var err error
-		if feat.Init != nil {
-			err = feat.Init(a.Env)
-		}
-
-		if err != nil {
-			log.Fatalf("failed to init feature %s.\n%v", feat.Name, err)
-			return
-		}
-
-	}
-
-	if a.Env.Scheduler != nil {
-		_ = di.Provide(func() (Scheduler, error) {
-			return a.Env.Scheduler, nil
-		})
-	}
-
-	/*if a.Env.EventBus != nil {
-		_ = di.Provide(func() (EventBus, error) {
-			return a.Env.EventBus, nil
-		})
-	}*/
-
-	_ = di.Provide(func() (Router, error) {
-		return a.Env.Router, nil
-	})
-
-	/*
-		if a.Env.dataSource != nil {
-			_ = di.Provide(func() (DataSource, error) {
-				return a.Env.dataSource, nil
-			})
-		}*/
-
-}
-
 func (a *App) Run(addr string) {
 	// setup exit code for graceful shutdown
 	var exitCode int
@@ -75,10 +36,10 @@ func (a *App) Run(addr string) {
 		})
 	}()
 
-	if a.Env.Scheduler != nil {
+	if a.Scheduler != nil {
 		go func() {
 			time.Sleep(5 * time.Second)
-			a.Env.Scheduler.StartAsync()
+			a.Scheduler.StartAsync()
 		}()
 	}
 	/*if err != nil {
@@ -97,16 +58,18 @@ func (a *App) Cleanup() {
 	})
 }
 
-func NewApp(name string, env *Env, features []Feature) *App {
-
-	app := &App{
-		Name:     name,
-		Features: features,
-		Env:      env,
-		//Router:   r,
+func (a *App) Init() *App {
+	for _, feat := range a.Features {
+		var err error
+		if feat.Init != nil {
+			err = feat.Init(a)
+		}
+		if err != nil {
+			log.Fatalf("failed to init feature %s.\n%v", feat.Name, err)
+			return nil
+		}
 	}
-	app.AfterPropertiesSet()
-	return app
+	return a
 }
 
 func gracefully() {
