@@ -31,7 +31,6 @@ type JwtCfg struct {
 }
 
 type RouterConfig struct {
-	Production       bool
 	Cors             bool
 	RemoveTrailSlash bool
 	BodyLimit        string

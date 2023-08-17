@@ -1,7 +1,6 @@
 package micro
 
 import (
-	"github.com/fabriqs/go-micro/di"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
@@ -18,22 +17,15 @@ func (a *App) Run(addr string) {
 
 	// start the server
 	go func() {
-		_ = di.Inject(func(r Router) {
-			_ = r.Start("0.0.0.0:" + addr)
-		})
+		_ = a.Router.Start("0.0.0.0:" + addr)
 	}()
 
 	// run the cleanup after the server is terminated
 	defer func() {
-		_ = di.Inject(func(r Router) {
-			_ = r.Shutdown()
-		})
-
-		_ = di.Inject(func(db DataSource) {
-			if db != nil {
-				db.Close()
-			}
-		})
+		_ = a.Router.Shutdown()
+		if a.Env.DataSource != nil {
+			a.Env.DataSource.Close()
+		}
 	}()
 
 	if a.Scheduler != nil {
@@ -53,9 +45,9 @@ func (a *App) Run(addr string) {
 }
 
 func (a *App) Cleanup() {
-	_ = di.Inject(func(db DataSource) {
-		db.Close()
-	})
+	if a.Env.DataSource != nil {
+		a.Env.DataSource.Close()
+	}
 }
 
 func (a *App) Init() *App {
