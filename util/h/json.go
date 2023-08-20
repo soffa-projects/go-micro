@@ -3,7 +3,10 @@ package h
 import (
 	"encoding/json"
 	log "github.com/sirupsen/logrus"
+	"net/http"
+	"os"
 	"reflect"
+	"strings"
 )
 
 func ToJsonStringPtr(input interface{}) (*string, error) {
@@ -55,4 +58,23 @@ func Diff(original, updated interface{}) map[string]interface{} {
 
 func DeserializeJson(input string, out interface{}) error {
 	return json.Unmarshal([]byte(input), out)
+}
+
+func DeserializeJsonUri(input string, out interface{}) error {
+	if strings.HasPrefix(input, "http") {
+		resp, err := http.Get(input)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		return json.NewDecoder(resp.Body).Decode(out)
+	} else {
+		// read file from disk
+		data, err := os.ReadFile(input)
+		if err != nil {
+			return err
+		}
+		return json.Unmarshal(data, out)
+	}
+
 }
