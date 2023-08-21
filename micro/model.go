@@ -7,6 +7,7 @@ import (
 type Ctx interface {
 	Config() interface{}
 	DB() DataSource
+
 	Auth() *schema.Authentication
 	IsAuthenticated() bool
 }

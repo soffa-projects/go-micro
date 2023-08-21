@@ -14,6 +14,7 @@ type App struct {
 	Router        Router
 	Scheduler     Scheduler
 	TokenProvider TokenProvider
+	Notifier      NotificationService
 	Mailer        Mailer
 	Env           *Env
 	//components    []Component

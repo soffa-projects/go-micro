@@ -15,9 +15,13 @@ func GetEnv(keys ...string) string {
 }
 
 func RequireEnv(key string) string {
+	return RequireEnvIf(true, key)
+}
+
+func RequireEnvIf(test bool, key string) string {
 	value := os.Getenv(key)
-	if value == "" {
-		log.Fatalf("Missing env varaible: %s", key)
+	if test && value == "" {
+		log.Fatalf("Missing env variable: %s", key)
 	}
 	return value
 }

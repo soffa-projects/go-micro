@@ -34,20 +34,20 @@ func Reset() {
 type Component interface {
 }
 
-var registry = make(map[string]Component)
+var registry = make(map[string]any)
 
 func Register(name string, provider interface{}) {
 	registry[name] = provider
 }
 
 func Resolve[T Component](typ T) *T {
-
 	rtype := reflect.TypeOf(typ)
 	for _, component := range registry {
-		r1 := reflect.TypeOf(component)
-		match1 := r1 == rtype
-		match2 := r1.Elem() == rtype
-		if match1 || match2 {
+		cr := reflect.TypeOf(component)
+		if cr == rtype {
+			return component.(*T)
+		}
+		if cr.Kind() == reflect.Ptr && cr.Elem() == rtype {
 			return component.(*T)
 		}
 	}
@@ -56,5 +56,5 @@ func Resolve[T Component](typ T) *T {
 }
 
 func Clear() {
-	registry = make(map[string]Component)
+	registry = make(map[string]any)
 }

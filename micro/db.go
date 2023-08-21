@@ -6,6 +6,7 @@ import (
 )
 
 type DataSourceCfg struct {
+	Production bool
 	Url        string
 	Migrations embed.FS
 }

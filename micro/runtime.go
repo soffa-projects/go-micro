@@ -33,7 +33,7 @@ func (a *App) Run(addr string) {
 
 	if a.Scheduler != nil {
 		go func() {
-			time.Sleep(5 * time.Second)
+			time.Sleep(10 * time.Second)
 			a.Scheduler.StartAsync()
 			log.Infof("scheduler started")
 		}()
@@ -56,6 +56,26 @@ func (a *App) Cleanup() {
 
 func (a *App) Init() *App {
 	//a.components = make([]Component, 0)
+
+	if a.Scheduler != nil {
+		di.Register(SchedulerService, a.Scheduler)
+	}
+	if a.TokenProvider != nil {
+		di.Register(TokenProviderService, a.TokenProvider)
+	}
+	if a.Mailer != nil {
+		di.Register(MailerServer, a.Mailer)
+	}
+
+	if a.Notifier != nil {
+		di.Register(Notifications, a.Notifier)
+		Subscribe(NotificationTopic, func(payload Event) error {
+			return a.Notifier.Send(Notification{
+				Message: payload.Event,
+			})
+		})
+	}
+
 	for _, feat := range a.Features {
 		if feat.Init != nil {
 			component, err := feat.Init(a)
