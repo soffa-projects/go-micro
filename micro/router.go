@@ -35,9 +35,10 @@ type RouterConfig struct {
 	BodyLimit        string
 	Swagger          bool
 	//Prometheus       *PrometheusCfg
-	JwtAuth    bool
-	SentryDsn  string
-	OnShutdown func()
+	//JwtAuth    bool
+	TokenProvider TokenProvider
+	SentryDsn     string
+	OnShutdown    func()
 }
 
 type MiddlewareFunc func(ctx Ctx) error

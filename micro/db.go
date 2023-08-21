@@ -21,8 +21,9 @@ type DataSource interface {
 	First(any, Query) error
 	Find(any, Query) error
 	Count(any, Query) (int64, error)
-  Execute(any, Query) (int64, error)
+	Execute(any, Query) (int64, error)
 	Patch(model any, id string, data map[string]interface{}) (int64, error)
+	Migrate()
 }
 
 var ErrRecordNotFound = errors.Functional("record not found")

@@ -1,6 +1,7 @@
 package micro
 
 import (
+	"github.com/fabriqs/go-micro/di"
 	log "github.com/sirupsen/logrus"
 	"github.com/timandy/routine"
 	"os"
@@ -34,6 +35,7 @@ func (a *App) Run(addr string) {
 		go func() {
 			time.Sleep(5 * time.Second)
 			a.Scheduler.StartAsync()
+			log.Infof("scheduler started")
 		}()
 	}
 	/*if err != nil {
@@ -53,14 +55,18 @@ func (a *App) Cleanup() {
 }
 
 func (a *App) Init() *App {
+	//a.components = make([]Component, 0)
 	for _, feat := range a.Features {
-		var err error
 		if feat.Init != nil {
-			err = feat.Init(a)
-		}
-		if err != nil {
-			log.Fatalf("failed to init feature %s.\n%v", feat.Name, err)
-			return nil
+			component, err := feat.Init(a)
+			if err != nil {
+				log.Fatalf("failed to init feature %s.\n%v", feat.Name, err)
+				return nil
+			}
+			//a.components = append(a.components, component)
+			if component != nil {
+				di.Register(feat.Name, component)
+			}
 		}
 	}
 	return a

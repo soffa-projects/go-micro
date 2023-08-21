@@ -1,18 +1,22 @@
 package micro
 
+import "github.com/fabriqs/go-micro/di"
+
 type Feature struct {
 	Name string
 	//@deprecated
-	Init func(app *App) error
+	Init func(app *App) (di.Component, error)
 }
 
 type App struct {
-	Name      string
-	Features  []Feature
-	Router    Router
-	Scheduler Scheduler
-	Mailer    Mailer
-	Env       *Env
+	Name          string
+	Features      []Feature
+	Router        Router
+	Scheduler     Scheduler
+	TokenProvider TokenProvider
+	Mailer        Mailer
+	Env           *Env
+	//components    []Component
 }
 
 type Env struct {
