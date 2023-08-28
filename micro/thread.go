@@ -39,5 +39,5 @@ func currentDB() DataSource {
 	if ctx == nil {
 		log.Fatal("NO_CONTEXT_PROVIDED")
 	}
-	return CurrentContext().DB()
+	return ctx.DB()
 }

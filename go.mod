@@ -10,6 +10,7 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/rs/xid v1.5.0
 	github.com/sirupsen/logrus v1.9.3
+	github.com/sqids/sqids-go v0.2.0
 	github.com/stretchr/testify v1.8.4
 	github.com/thoas/go-funk v0.9.3
 	github.com/timandy/routine v1.1.1
