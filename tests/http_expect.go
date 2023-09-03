@@ -27,6 +27,7 @@ type HttpRequest struct {
 	internal      *httpexpect.Expect
 	params        any
 	authorization string
+	headers       map[string]string
 }
 
 type ValueExpect struct {
@@ -87,6 +88,7 @@ func (f *HttpExpect) request(method string, path string, body ...interface{}) *H
 		internal: f.http,
 		method:   method,
 		path:     path,
+		headers:  map[string]string{},
 	}
 	if body != nil {
 		r.body = body[0]
@@ -110,10 +112,20 @@ func (r *HttpRequest) Expect() *HttpTestResult {
 	if r.authorization != "" {
 		req = req.WithHeader("Authorization", r.authorization)
 	}
+	if r.headers != nil && len(r.headers) > 0 {
+		for k, v := range r.headers {
+			req = req.WithHeader(k, v)
+		}
+	}
 	return &HttpTestResult{
 		t:      r.t,
 		result: req.Expect(),
 	}
+}
+
+func (r *HttpRequest) Header(name string, value string) *HttpRequest {
+	r.headers[name] = value
+	return r
 }
 
 func (r *HttpRequest) BearerAuth(token string) *HttpRequest {
