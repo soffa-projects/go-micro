@@ -61,25 +61,25 @@ func (r entityRepoImpl[T]) CreateAll(ctx Ctx, entities []*T) error {
 	for _, e := range entities {
 		r.hooks.PreCreate(e)
 	}
-	return globalEnv.DataSource.Create(ctx, entities)
+	return globalEnv.DB.Create(ctx, entities)
 }
 
 func (r entityRepoImpl[T]) Create(ctx Ctx, record *T) error {
 	r.hooks.PreCreate(record)
-	return globalEnv.DataSource.Create(ctx, &record)
+	return globalEnv.DB.Create(ctx, &record)
 }
 
 func (r entityRepoImpl[T]) Update(ctx Ctx, data *T) error {
-	return globalEnv.DataSource.Save(ctx, &data)
+	return globalEnv.DB.Save(ctx, &data)
 }
 
 func (r entityRepoImpl[T]) UpdateAll(ctx Ctx, data []*T) error {
-	return globalEnv.DataSource.Save(ctx, &data)
+	return globalEnv.DB.Save(ctx, &data)
 }
 
 func (r entityRepoImpl[T]) DeleteBy(ctx Ctx, where string, args ...interface{}) error {
 	var model T
-	_, err := globalEnv.DataSource.Delete(ctx, &model, Query{W: where, Args: args})
+	_, err := globalEnv.DB.Delete(ctx, &model, Query{W: where, Args: args})
 	return err
 }
 
@@ -89,7 +89,7 @@ func (r entityRepoImpl[T]) DeleteById(ctx Ctx, value string) error {
 
 func (r entityRepoImpl[T]) Patch(ctx Ctx, id string, value map[string]interface{}) error {
 	var model T
-	_, err := globalEnv.DataSource.Patch(ctx, model, id, value)
+	_, err := globalEnv.DB.Patch(ctx, model, id, value)
 	return err
 }
 
@@ -101,7 +101,7 @@ func (r entityRepoImpl[T]) Merge(ctx Ctx, id string, merger func(target *T)) (*T
 	beforeMerge := *loaded
 	merger(loaded)
 	if &beforeMerge != loaded {
-		err = globalEnv.DataSource.Save(ctx, loaded)
+		err = globalEnv.DB.Save(ctx, loaded)
 	}
 	return loaded, err
 }
@@ -142,36 +142,36 @@ func (r entityRepoImpl[T]) Import(ctx Ctx, items []*T, getId func(item *T) strin
 
 func (r entityRepoImpl[T]) ExistsBy(ctx Ctx, where string, args ...interface{}) (bool, error) {
 	var model T
-	return globalEnv.DataSource.Exists(ctx, model, Query{W: where, Args: args})
+	return globalEnv.DB.Exists(ctx, model, Query{W: where, Args: args})
 }
 
 func (r entityRepoImpl[T]) FindAll(ctx Ctx) ([]*T, error) {
 	var model []*T
-	err := globalEnv.DataSource.Find(ctx, &model, Query{})
+	err := globalEnv.DB.Find(ctx, &model, Query{})
 	return model, err
 }
 
 func (r entityRepoImpl[T]) FindAllSorted(ctx Ctx, orderBy string) ([]*T, error) {
 	var model []*T
-	err := globalEnv.DataSource.Find(ctx, &model, Query{Sort: orderBy})
+	err := globalEnv.DB.Find(ctx, &model, Query{Sort: orderBy})
 	return model, err
 }
 
 func (r entityRepoImpl[T]) FindByInto(ctx Ctx, target any, where string, args ...interface{}) error {
 	var model []*T
-	err := globalEnv.DataSource.Find(ctx, &target, Query{W: where, Args: args, Model: model})
+	err := globalEnv.DB.Find(ctx, &target, Query{W: where, Args: args, Model: model})
 	return err
 }
 
 func (r entityRepoImpl[T]) FindBy(ctx Ctx, where string, args ...interface{}) ([]*T, error) {
 	var model []*T
-	err := globalEnv.DataSource.Find(ctx, &model, Query{W: where, Args: args})
+	err := globalEnv.DB.Find(ctx, &model, Query{W: where, Args: args})
 	return model, err
 }
 
 func (r entityRepoImpl[T]) FindBySorted(ctx Ctx, sort string, where string, args ...interface{}) ([]*T, error) {
 	var model []*T
-	err := globalEnv.DataSource.Find(ctx, &model, Query{W: where, Args: args, Sort: sort})
+	err := globalEnv.DB.Find(ctx, &model, Query{W: where, Args: args, Sort: sort})
 	return model, err
 }
 
@@ -185,7 +185,7 @@ func (r entityRepoImpl[T]) FindByIds(ctx Ctx, ids []string) ([]*T, error) {
 
 func (r entityRepoImpl[T]) FirstBy(ctx Ctx, where string, args ...interface{}) (*T, error) {
 	var model T
-	err := globalEnv.DataSource.First(ctx, &model, Query{W: where, Args: args})
+	err := globalEnv.DB.First(ctx, &model, Query{W: where, Args: args})
 	if serrors.Is(err, ErrRecordNotFound) {
 		return nil, nil
 	}
@@ -194,17 +194,17 @@ func (r entityRepoImpl[T]) FirstBy(ctx Ctx, where string, args ...interface{}) (
 
 func (r entityRepoImpl[T]) CountBy(ctx Ctx, where string, args ...interface{}) (int64, error) {
 	var model T
-	return globalEnv.DataSource.Count(ctx, model, Query{W: where, Args: args})
+	return globalEnv.DB.Count(ctx, model, Query{W: where, Args: args})
 }
 
 func (r entityRepoImpl[T]) CountAll(ctx Ctx) (int64, error) {
 	var model T
-	return globalEnv.DataSource.Count(ctx, model, Query{})
+	return globalEnv.DB.Count(ctx, model, Query{})
 }
 
 func (r entityRepoImpl[T]) Query(ctx Ctx, target interface{}, raw string, args ...interface{}) error {
 	var m = new(T)
-	return globalEnv.DataSource.Find(ctx, target, Query{
+	return globalEnv.DB.Find(ctx, target, Query{
 		Model: m,
 		Raw:   raw,
 		Args:  args,
@@ -213,6 +213,6 @@ func (r entityRepoImpl[T]) Query(ctx Ctx, target interface{}, raw string, args .
 
 func (r entityRepoImpl[T]) Raw(ctx Ctx, raw string, args ...interface{}) error {
 	var m = new(T)
-	_, err := globalEnv.DataSource.Execute(ctx, m, Query{Model: m, Raw: raw, Args: args})
+	_, err := globalEnv.DB.Execute(ctx, m, Query{Model: m, Raw: raw, Args: args})
 	return err
 }

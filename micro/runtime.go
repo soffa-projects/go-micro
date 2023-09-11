@@ -1,7 +1,10 @@
 package micro
 
 import (
+	"embed"
 	"github.com/fabriqs/go-micro/di"
+	"github.com/fabriqs/go-micro/util/h"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
@@ -9,53 +12,37 @@ import (
 	"time"
 )
 
-func (app *App) Run(addr string) {
-	// setup exit code for graceful shutdown
-	var exitCode int
-	defer func() {
-		os.Exit(exitCode)
-	}()
+type Cfg struct {
+	Name          string
+	Version       string
+	Features      []Feature
+	FS            embed.FS
+	DefaultLocale string
+	Locales       string
+	MultiTenant   bool
+}
 
-	// start the server
-	go func() {
-		_ = app.Env.Router.Start("0.0.0.0:" + addr)
-	}()
+// ----------------------------------------------
 
-	// run the cleanup after the server is terminated
-	defer func() {
-		_ = app.Env.Router.Shutdown()
-		if app.Env.DataSource != nil {
-			app.Env.DataSource.Close()
-		}
-	}()
+func Set(key string, value string) {
+	os.Setenv(key, value)
+}
 
-	if app.Env.Scheduler != nil {
-		go func() {
-			time.Sleep(10 * time.Second)
-			app.Env.Scheduler.StartAsync()
-			log.Infof("scheduler started")
-		}()
-	}
-	/*if err != nil {
-		fmt.Printf("error: %v", err)
-		exitCode = 1
-		return
-	}*/
-
-	// ensure the server is shutdown gracefully & app runs
-	gracefully()
+func (app *App) Get(key string) string {
+	return h.RequireEnv(key)
 }
 
 func (app *App) Cleanup() {
-	if app.Env.DataSource != nil {
-		app.Env.DataSource.Close()
+	if app.Env.DB != nil {
+		app.Env.DB.Close()
 	}
 }
 
-func (app *App) Init() *App {
+func (app *App) Init(features []Feature) *App {
 	//env.components = make([]Component, 0)
 
 	env := app.Env
+	globalLocalizer = env.Localizer
 
 	globalEnv = env
 	globalApp = app
@@ -79,7 +66,7 @@ func (app *App) Init() *App {
 		})
 	}
 
-	for _, feat := range app.Features {
+	for _, feat := range features {
 		if feat.Init != nil {
 			component, err := feat.Init(app)
 			if err != nil {
@@ -95,9 +82,69 @@ func (app *App) Init() *App {
 	return app
 }
 
+func (app *App) Run(addr ...string) {
+	// setup exit code for graceful shutdown
+	var exitCode int
+	defer func() {
+		os.Exit(exitCode)
+	}()
+
+	var port string
+	if len(addr) == 0 {
+		port = h.GetEnvOrDefault("PORT", "8080")
+	} else {
+		port = addr[0]
+	}
+
+	// start the server
+	go func() {
+		_ = app.Env.Router.Start("0.0.0.0:" + port)
+	}()
+
+	// run the cleanup after the server is terminated
+	defer func() {
+		_ = app.Env.Router.Shutdown()
+		if app.Env.DB != nil {
+			app.Env.DB.Close()
+		}
+	}()
+
+	if app.Env.Scheduler != nil {
+		go func() {
+			time.Sleep(10 * time.Second)
+			app.Env.Scheduler.StartAsync()
+			log.Infof("scheduler started")
+		}()
+	}
+	/*if err != nil {
+		fmt.Printf("error: %v", err)
+		exitCode = 1
+		return
+	}*/
+
+	// ensure the server is shutdown gracefully & app runs
+	gracefully()
+}
+
 func gracefully() {
 	quit := make(chan os.Signal, 1)
 	defer close(quit)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
+}
+
+func T(messageId string, other ...string) string {
+	if globalLocalizer == nil {
+		return messageId
+	}
+	theOrder := ""
+	if len(other) > 0 {
+		theOrder = other[0]
+	}
+	return globalLocalizer.MustLocalize(&i18n.LocalizeConfig{
+		DefaultMessage: &i18n.Message{
+			ID:    messageId,
+			Other: theOrder,
+		},
+	})
 }

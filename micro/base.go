@@ -2,6 +2,7 @@ package micro
 
 import (
 	"github.com/fabriqs/go-micro/di"
+	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 var DefaltTenantId = "public"
@@ -12,11 +13,9 @@ type Feature struct {
 }
 
 type App struct {
-	Name     string
-	Version  string
-	Config   interface{}
-	Features []Feature
-	Env      *Env
+	Name    string
+	Version string
+	Env     *Env
 }
 
 type AuthToken struct {
@@ -47,12 +46,15 @@ type Ctx struct {
 type Env struct {
 	Ctx
 	Conf          interface{}
-	DataSource    DataSource
+	DB            DataSource
 	Router        Router
 	Scheduler     Scheduler
 	TokenProvider TokenProvider
 	Notifier      NotificationService
 	Mailer        Mailer
+	Production    bool
+	TenantLoader  TenantLoader
+	Localizer     *i18n.Localizer
 }
 
 type AppCfg struct {

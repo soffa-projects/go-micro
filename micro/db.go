@@ -1,14 +1,14 @@
 package micro
 
 import (
-	"embed"
 	"github.com/fabriqs/go-micro/util/errors"
+	"io/fs"
 )
 
 type DataSourceCfg struct {
 	Production   bool
 	Url          string
-	Migrations   embed.FS
+	Migrations   fs.FS
 	TenantLoader TenantLoader
 }
 

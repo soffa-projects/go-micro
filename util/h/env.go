@@ -14,6 +14,13 @@ func GetEnv(keys ...string) string {
 	return ""
 }
 
+func GetEnvOrDefault(key string, defaultValue string) string {
+		if value := os.Getenv(key); value != "" {
+			return value
+		}
+	return defaultValue
+}
+
 func RequireEnv(key string) string {
 	return RequireEnvIf(true, key)
 }
