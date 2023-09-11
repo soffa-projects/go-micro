@@ -7,7 +7,7 @@ import (
 
 func NewId(prefix string) string {
 	guid := xid.New()
-	if !strings.HasSuffix(prefix, "_") {
+	if !strings.HasSuffix(prefix, "_") && !strings.HasSuffix(prefix, "-") {
 		prefix += "_"
 	}
 	return prefix + guid.String()

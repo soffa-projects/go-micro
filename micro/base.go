@@ -1,29 +1,58 @@
 package micro
 
-import "github.com/fabriqs/go-micro/di"
+import (
+	"github.com/fabriqs/go-micro/di"
+)
+
+var DefaltTenantId = "public"
 
 type Feature struct {
 	Name string
-	//@deprecated
 	Init func(app *App) (di.Component, error)
 }
 
 type App struct {
+	Name     string
+	Version  string
+	Config   interface{}
+	Features []Feature
+	Env      *Env
+}
+
+type AuthToken struct {
+	Issuer   string `json:"token"`
+	Audience string `json:"audience"`
+}
+
+type Authentication struct {
+	Token         *AuthToken
+	Authenticated bool
 	Name          string
-	Features      []Feature
+	Email         string
+	UserId        string
+	TenantId      string
+	Roles         []string
+	Permissions   []string
+}
+
+type TenantLoader interface {
+	GetTenant() []string
+}
+
+type Ctx struct {
+	TenantId string
+	Auth     *Authentication
+}
+
+type Env struct {
+	Ctx
+	Conf          interface{}
+	DataSource    DataSource
 	Router        Router
 	Scheduler     Scheduler
 	TokenProvider TokenProvider
 	Notifier      NotificationService
 	Mailer        Mailer
-	Env           *Env
-	//components    []Component
-}
-
-type Env struct {
-	Ctx
-	Conf       interface{}
-	DataSource DataSource
 }
 
 type AppCfg struct {
@@ -33,20 +62,28 @@ type AppCfg struct {
 	DB       DataSource
 }
 
-func (e *Env) DB() DataSource {
-	return e.DataSource
+type FixedTenantLoader struct {
+	TenantLoader
+	tenants []string
 }
 
-func (e *Env) Config() interface{} {
-	return e.Conf
+func (f *FixedTenantLoader) GetTenant() []string {
+	return f.tenants
 }
 
-func (e *Env) Tx(callback func(tx DataSource) (interface{}, error)) (interface{}, error) {
-	var result interface{}
-	err := e.DB().Transaction(func(tx DataSource) error {
-		result0, err0 := callback(tx)
-		result = result0
-		return err0
-	})
-	return result, err
+func NewFixedTenantLoader(tenants []string) *FixedTenantLoader {
+	return &FixedTenantLoader{tenants: tenants}
+}
+
+func (ctx Ctx) IsAuthenticated() bool {
+	if ctx.Auth == nil {
+		return false
+	}
+	return ctx.Auth.Authenticated
+}
+
+func NewCtx(tenantId string) Ctx {
+	return Ctx{
+		TenantId: tenantId,
+	}
 }

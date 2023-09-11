@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 type Upload struct {
@@ -13,6 +14,19 @@ type Upload struct {
 	Mime     string  `json:"mime,omitempty"`
 	Metadata string  `json:"metadata,omitempty"`
 	Tags     *string `json:"tags,omitempty"`
+}
+
+//goland:noinspection GoMixedReceiverTypes
+func (a Upload) ToString(input []*Upload) *string {
+	if input == nil {
+		return nil
+	}
+	var images []string
+	for _, image := range input {
+		images = append(images, image.Url)
+	}
+	result := strings.Join(images, ",")
+	return &result
 }
 
 func (a *Upload) Value() (driver.Value, error) {
@@ -43,4 +57,13 @@ func (f *UploadList) Scan(src interface{}) error {
 	default:
 		return fmt.Errorf("cannot scan type %T into MyData", src)
 	}
+}
+
+func (f *UploadList) ToString() *string {
+	var images []string
+	for _, image := range f.Data {
+		images = append(images, image.Url)
+	}
+	result := strings.Join(images, ",")
+	return &result
 }

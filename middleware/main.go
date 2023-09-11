@@ -23,7 +23,7 @@ func AuthenticatedWithRole(roles ...string) micro.MiddlewareFunc {
 		if !ctx.IsAuthenticated() {
 			return errors.Unauthorized("Unauthorized")
 		}
-		auth := ctx.Auth()
+		auth := ctx.Auth
 		for _, authRole := range auth.Roles {
 			for _, role := range roles {
 				if authRole == role {

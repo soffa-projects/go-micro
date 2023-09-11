@@ -14,13 +14,12 @@ type Event struct {
 	Data    interface{}
 }
 
-type SubscribeFunc = func(payload Event) error
+type SubscribeFunc = func(ctx Ctx, payload Event) error
 
 func Subscribe(topic string, handle SubscribeFunc) error {
 	//ctx := micro.CurrentContext()
 	return impl.Subscribe(topic, func(ctx Ctx, payload Event) {
-		SetContext(ctx)
-		if err := handle(payload); err != nil {
+		if err := handle(ctx, payload); err != nil {
 			log.Errorf("error handling event: %s", err)
 		}
 	})
@@ -29,34 +28,22 @@ func Subscribe(topic string, handle SubscribeFunc) error {
 func SubscribeAsync(topic string, handle SubscribeFunc) error {
 	//return impl.SubscribeAsync(topic, handle, false)
 	return impl.SubscribeAsync(topic, func(ctx Ctx, payload Event) {
-		SetContext(ctx)
-		if err := handle(payload); err != nil {
+		if err := handle(ctx, payload); err != nil {
 			log.Errorf("error handling event: %s", err)
 		}
 	}, false)
 }
 
-/*
-func SubscribeOnceAsync(topic string, handle SubscribeFunc) error {
-	return impl.SubscribeOnceAsync(topic, handle)
-}
-
-func Unsubscribe(topic string, handle SubscribeFunc) error {
-	return impl.Unsubscribe(topic, handle)
-}
-*/
-
-func SendNotification(event Notification) {
-	Publish(NotificationTopic, Event{
+func SendNotification(ctx Ctx, event Notification) {
+	Publish(ctx, NotificationTopic, Event{
 		Event: event.Message,
 	})
 }
 
-func Publish(topic string, payload Event) {
+func Publish(ctx Ctx, topic string, payload Event) {
 	if payload.Error != "" {
 		log.Errorf(payload.Error)
 	}
-	ctx := CurrentContext()
 	impl.Publish(topic, ctx, payload)
 }
 

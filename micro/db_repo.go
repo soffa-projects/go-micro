@@ -11,32 +11,32 @@ type RepoHooks[T any] struct {
 }
 
 type EntityRepo[T any] interface {
-	Create(*T) error
-	CreateAll([]*T) error
-	UpdateAll([]*T) error
-	Update(*T) error
-	DeleteById(string) error
-	Merge(string, func(target *T)) (*T, error)
-	Import([]*T, func(item *T) string) (int, error)
-	FindAll() ([]*T, error)
-	FindAllSorted(string) ([]*T, error)
-	FindById(string) (*T, error)
-	FindByIds(values []string) ([]*T, error)
-	CountAll() (int64, error)
+	Create(Ctx, *T) error
+	CreateAll(Ctx, []*T) error
+	UpdateAll(Ctx, []*T) error
+	Update(Ctx, *T) error
+	DeleteById(Ctx, string) error
+	Merge(Ctx, string, func(target *T)) (*T, error)
+	Import(Ctx, []*T, func(item *T) string) (int, error)
+	FindAll(Ctx) ([]*T, error)
+	FindAllSorted(Ctx, string) ([]*T, error)
+	FindById(Ctx, string) (*T, error)
+	FindByIds(ctx Ctx, values []string) ([]*T, error)
+	CountAll(Ctx) (int64, error)
 }
 
 type EntityRepoImpl[T any] interface {
 	EntityRepo[T]
-	Query(interface{}, string, ...interface{}) error
-	Raw(string, ...interface{}) error
-	Patch(string, map[string]any) error
-	FindBySorted(sortBy string, where string, args ...interface{}) ([]*T, error)
-	FindBy(string, ...interface{}) ([]*T, error)
-	FindByInto(any, string, ...interface{}) error
-	FirstBy(string, ...interface{}) (*T, error)
-	CountBy(string, ...interface{}) (int64, error)
-	ExistsBy(string, ...interface{}) (bool, error)
-	DeleteBy(string, ...interface{}) error
+	Query(Ctx, interface{}, string, ...interface{}) error
+	Raw(Ctx, string, ...interface{}) error
+	Patch(Ctx, string, map[string]any) error
+	FindBySorted(ctx Ctx, sortBy string, where string, args ...interface{}) ([]*T, error)
+	FindBy(Ctx, string, ...interface{}) ([]*T, error)
+	FindByInto(Ctx, any, string, ...interface{}) error
+	FirstBy(Ctx, string, ...interface{}) (*T, error)
+	CountBy(Ctx, string, ...interface{}) (int64, error)
+	ExistsBy(Ctx, string, ...interface{}) (bool, error)
+	DeleteBy(Ctx, string, ...interface{}) error
 }
 
 type entityRepoImpl[T any] struct {
@@ -57,58 +57,58 @@ func NewRepoImpl[T any](preCreate func(e *T)) EntityRepoImpl[T] {
 // COMMANDS
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-func (r entityRepoImpl[T]) CreateAll(entities []*T) error {
+func (r entityRepoImpl[T]) CreateAll(ctx Ctx, entities []*T) error {
 	for _, e := range entities {
 		r.hooks.PreCreate(e)
 	}
-	return currentDB().Create(entities)
+	return globalEnv.DataSource.Create(ctx, entities)
 }
 
-func (r entityRepoImpl[T]) Create(record *T) error {
+func (r entityRepoImpl[T]) Create(ctx Ctx, record *T) error {
 	r.hooks.PreCreate(record)
-	return currentDB().Create(&record)
+	return globalEnv.DataSource.Create(ctx, &record)
 }
 
-func (r entityRepoImpl[T]) Update(data *T) error {
-	return currentDB().Save(&data)
+func (r entityRepoImpl[T]) Update(ctx Ctx, data *T) error {
+	return globalEnv.DataSource.Save(ctx, &data)
 }
 
-func (r entityRepoImpl[T]) UpdateAll(data []*T) error {
-	return currentDB().Save(&data)
+func (r entityRepoImpl[T]) UpdateAll(ctx Ctx, data []*T) error {
+	return globalEnv.DataSource.Save(ctx, &data)
 }
 
-func (r entityRepoImpl[T]) DeleteBy(where string, args ...interface{}) error {
+func (r entityRepoImpl[T]) DeleteBy(ctx Ctx, where string, args ...interface{}) error {
 	var model T
-	_, err := currentDB().Delete(&model, Query{W: where, Args: args})
+	_, err := globalEnv.DataSource.Delete(ctx, &model, Query{W: where, Args: args})
 	return err
 }
 
-func (r entityRepoImpl[T]) DeleteById(value string) error {
-	return r.DeleteBy("id=?", value)
+func (r entityRepoImpl[T]) DeleteById(ctx Ctx, value string) error {
+	return r.DeleteBy(ctx, "id=?", value)
 }
 
-func (r entityRepoImpl[T]) Patch(id string, value map[string]interface{}) error {
+func (r entityRepoImpl[T]) Patch(ctx Ctx, id string, value map[string]interface{}) error {
 	var model T
-	_, err := currentDB().Patch(model, id, value)
+	_, err := globalEnv.DataSource.Patch(ctx, model, id, value)
 	return err
 }
 
-func (r entityRepoImpl[T]) Merge(id string, merger func(target *T)) (*T, error) {
-	loaded, err := r.FindById(id)
+func (r entityRepoImpl[T]) Merge(ctx Ctx, id string, merger func(target *T)) (*T, error) {
+	loaded, err := r.FindById(ctx, id)
 	if err != nil {
 		return nil, errors.ResourceNotFound("missing_entity")
 	}
 	beforeMerge := *loaded
 	merger(loaded)
 	if &beforeMerge != loaded {
-		err = currentDB().Save(loaded)
+		err = globalEnv.DataSource.Save(ctx, loaded)
 	}
 	return loaded, err
 }
 
-func (r entityRepoImpl[T]) Import(items []*T, getId func(item *T) string) (int, error) {
+func (r entityRepoImpl[T]) Import(ctx Ctx, items []*T, getId func(item *T) string) (int, error) {
 
-	existsing, err := r.FindAll() //TODO: fetch only ids
+	existsing, err := r.FindAll(ctx) //TODO: fetch only ids
 
 	if err != nil {
 		return 0, err
@@ -128,7 +128,7 @@ func (r entityRepoImpl[T]) Import(items []*T, getId func(item *T) string) (int, 
 		for _, item := range toBeAdded {
 			r.hooks.PreCreate(item)
 		}
-		err = r.CreateAll(toBeAdded)
+		err = r.CreateAll(ctx, toBeAdded)
 		if err != nil {
 			return 0, err
 		}
@@ -140,79 +140,79 @@ func (r entityRepoImpl[T]) Import(items []*T, getId func(item *T) string) (int, 
 // QUERIES
 // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-func (r entityRepoImpl[T]) ExistsBy(where string, args ...interface{}) (bool, error) {
+func (r entityRepoImpl[T]) ExistsBy(ctx Ctx, where string, args ...interface{}) (bool, error) {
 	var model T
-	return currentDB().Exists(model, Query{W: where, Args: args})
+	return globalEnv.DataSource.Exists(ctx, model, Query{W: where, Args: args})
 }
 
-func (r entityRepoImpl[T]) FindAll() ([]*T, error) {
+func (r entityRepoImpl[T]) FindAll(ctx Ctx) ([]*T, error) {
 	var model []*T
-	err := currentDB().Find(&model, Query{})
+	err := globalEnv.DataSource.Find(ctx, &model, Query{})
 	return model, err
 }
 
-func (r entityRepoImpl[T]) FindAllSorted(orderBy string) ([]*T, error) {
+func (r entityRepoImpl[T]) FindAllSorted(ctx Ctx, orderBy string) ([]*T, error) {
 	var model []*T
-	err := currentDB().Find(&model, Query{Sort: orderBy})
+	err := globalEnv.DataSource.Find(ctx, &model, Query{Sort: orderBy})
 	return model, err
 }
 
-func (r entityRepoImpl[T]) FindByInto(target any, where string, args ...interface{}) error {
+func (r entityRepoImpl[T]) FindByInto(ctx Ctx, target any, where string, args ...interface{}) error {
 	var model []*T
-	err := currentDB().Find(&target, Query{W: where, Args: args, Model: model})
+	err := globalEnv.DataSource.Find(ctx, &target, Query{W: where, Args: args, Model: model})
 	return err
 }
 
-func (r entityRepoImpl[T]) FindBy(where string, args ...interface{}) ([]*T, error) {
+func (r entityRepoImpl[T]) FindBy(ctx Ctx, where string, args ...interface{}) ([]*T, error) {
 	var model []*T
-	err := currentDB().Find(&model, Query{W: where, Args: args})
+	err := globalEnv.DataSource.Find(ctx, &model, Query{W: where, Args: args})
 	return model, err
 }
 
-func (r entityRepoImpl[T]) FindBySorted(sort string, where string, args ...interface{}) ([]*T, error) {
+func (r entityRepoImpl[T]) FindBySorted(ctx Ctx, sort string, where string, args ...interface{}) ([]*T, error) {
 	var model []*T
-	err := currentDB().Find(&model, Query{W: where, Args: args, Sort: sort})
+	err := globalEnv.DataSource.Find(ctx, &model, Query{W: where, Args: args, Sort: sort})
 	return model, err
 }
 
-func (r entityRepoImpl[T]) FindById(id string) (*T, error) {
-	return r.FirstBy("id=?", id)
+func (r entityRepoImpl[T]) FindById(ctx Ctx, id string) (*T, error) {
+	return r.FirstBy(ctx, "id=?", id)
 }
 
-func (r entityRepoImpl[T]) FindByIds(ids []string) ([]*T, error) {
-	return r.FindBy("id in (?)", ids)
+func (r entityRepoImpl[T]) FindByIds(ctx Ctx, ids []string) ([]*T, error) {
+	return r.FindBy(ctx, "id in (?)", ids)
 }
 
-func (r entityRepoImpl[T]) FirstBy(where string, args ...interface{}) (*T, error) {
+func (r entityRepoImpl[T]) FirstBy(ctx Ctx, where string, args ...interface{}) (*T, error) {
 	var model T
-	err := currentDB().First(&model, Query{W: where, Args: args})
+	err := globalEnv.DataSource.First(ctx, &model, Query{W: where, Args: args})
 	if serrors.Is(err, ErrRecordNotFound) {
 		return nil, nil
 	}
 	return &model, err
 }
 
-func (r entityRepoImpl[T]) CountBy(where string, args ...interface{}) (int64, error) {
+func (r entityRepoImpl[T]) CountBy(ctx Ctx, where string, args ...interface{}) (int64, error) {
 	var model T
-	return currentDB().Count(model, Query{W: where, Args: args})
+	return globalEnv.DataSource.Count(ctx, model, Query{W: where, Args: args})
 }
 
-func (r entityRepoImpl[T]) CountAll() (int64, error) {
+func (r entityRepoImpl[T]) CountAll(ctx Ctx) (int64, error) {
 	var model T
-	return currentDB().Count(model, Query{})
+	return globalEnv.DataSource.Count(ctx, model, Query{})
 }
 
-func (r entityRepoImpl[T]) Query(target interface{}, raw string, args ...interface{}) error {
+func (r entityRepoImpl[T]) Query(ctx Ctx, target interface{}, raw string, args ...interface{}) error {
 	var m = new(T)
-	return currentDB().Find(target, Query{
+	return globalEnv.DataSource.Find(ctx, target, Query{
 		Model: m,
 		Raw:   raw,
 		Args:  args,
 	})
 }
 
-func (r entityRepoImpl[T]) Raw(raw string, args ...interface{}) error {
+func (r entityRepoImpl[T]) Raw(ctx Ctx, raw string, args ...interface{}) error {
 	var m = new(T)
-	_, err := currentDB().Execute(m, Query{Model: m, Raw: raw, Args: args})
+	_, err := globalEnv.DataSource.Execute(ctx, m, Query{Model: m, Raw: raw, Args: args})
 	return err
 }

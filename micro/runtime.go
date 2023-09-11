@@ -3,15 +3,13 @@ package micro
 import (
 	"github.com/fabriqs/go-micro/di"
 	log "github.com/sirupsen/logrus"
-	"github.com/timandy/routine"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 )
 
-func (a *App) Run(addr string) {
+func (app *App) Run(addr string) {
 	// setup exit code for graceful shutdown
 	var exitCode int
 	defer func() {
@@ -20,21 +18,21 @@ func (a *App) Run(addr string) {
 
 	// start the server
 	go func() {
-		_ = a.Router.Start("0.0.0.0:" + addr)
+		_ = app.Env.Router.Start("0.0.0.0:" + addr)
 	}()
 
 	// run the cleanup after the server is terminated
 	defer func() {
-		_ = a.Router.Shutdown()
-		if a.Env.DataSource != nil {
-			a.Env.DataSource.Close()
+		_ = app.Env.Router.Shutdown()
+		if app.Env.DataSource != nil {
+			app.Env.DataSource.Close()
 		}
 	}()
 
-	if a.Scheduler != nil {
+	if app.Env.Scheduler != nil {
 		go func() {
 			time.Sleep(10 * time.Second)
-			a.Scheduler.StartAsync()
+			app.Env.Scheduler.StartAsync()
 			log.Infof("scheduler started")
 		}()
 	}
@@ -48,48 +46,53 @@ func (a *App) Run(addr string) {
 	gracefully()
 }
 
-func (a *App) Cleanup() {
-	if a.Env.DataSource != nil {
-		a.Env.DataSource.Close()
+func (app *App) Cleanup() {
+	if app.Env.DataSource != nil {
+		app.Env.DataSource.Close()
 	}
 }
 
-func (a *App) Init() *App {
-	//a.components = make([]Component, 0)
+func (app *App) Init() *App {
+	//env.components = make([]Component, 0)
 
-	if a.Scheduler != nil {
-		di.Register(SchedulerService, a.Scheduler)
+	env := app.Env
+
+	globalEnv = env
+	globalApp = app
+
+	if env.Scheduler != nil {
+		di.Register(SchedulerService, env.Scheduler)
 	}
-	if a.TokenProvider != nil {
-		di.Register(TokenProviderService, a.TokenProvider)
+	if env.TokenProvider != nil {
+		di.Register(TokenProviderService, env.TokenProvider)
 	}
-	if a.Mailer != nil {
-		di.Register(MailerServer, a.Mailer)
+	if env.Mailer != nil {
+		di.Register(MailerServer, env.Mailer)
 	}
 
-	if a.Notifier != nil {
-		di.Register(Notifications, a.Notifier)
-		Subscribe(NotificationTopic, func(payload Event) error {
-			return a.Notifier.Send(Notification{
+	if env.Notifier != nil {
+		di.Register(Notifications, env.Notifier)
+		Subscribe(NotificationTopic, func(ctx Ctx, payload Event) error {
+			return env.Notifier.Send(ctx, Notification{
 				Message: payload.Event,
 			})
 		})
 	}
 
-	for _, feat := range a.Features {
+	for _, feat := range app.Features {
 		if feat.Init != nil {
-			component, err := feat.Init(a)
+			component, err := feat.Init(app)
 			if err != nil {
 				log.Fatalf("failed to init feature %s.\n%v", feat.Name, err)
-				return nil
 			}
-			//a.components = append(a.components, component)
+			//env.components = append(env.components, component)
 			if component != nil {
 				di.Register(feat.Name, component)
 			}
 		}
 	}
-	return a
+
+	return app
 }
 
 func gracefully() {
@@ -97,24 +100,4 @@ func gracefully() {
 	defer close(quit)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-}
-
-func Invoke(ctx Ctx, cb func() (interface{}, error)) (out interface{}, err error) {
-	SetContext(ctx)
-	defer func() {
-		ClearContext()
-	}()
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	routine.Go(func() {
-		defer func() {
-			if err0 := recover(); err0 != nil {
-				err = err0.(error)
-			}
-			wg.Done()
-		}()
-		out, err = cb()
-	})
-	wg.Wait()
-	return out, err
 }
