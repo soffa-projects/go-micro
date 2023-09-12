@@ -2,14 +2,13 @@ package adapters
 
 import (
 	"github.com/fabriqs/go-micro/micro"
-	"github.com/fabriqs/go-micro/util/errors"
-	"github.com/fabriqs/go-micro/util/h"
 	_ "github.com/jackc/pgx/v5"
 	"github.com/pressly/goose/v3"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"io/fs"
 	"log"
 	"os"
 	"strings"
@@ -18,48 +17,32 @@ import (
 
 type adapter struct {
 	micro.DataSource
-	tenants map[string]*gorm.DB
-	current *gorm.DB
-	config  *micro.DataSourceCfg
+	//tenants map[string]*gorm.DB
+	internal *gorm.DB
+	//config  *micro.DataSourceCfg
 }
 
-func (a adapter) get(ctx micro.Ctx) *gorm.DB {
-	if a.current != nil {
-		return a.current
-	}
-	tenantId := ctx.TenantId
-	if tenantId == "" {
-		tenantId = micro.DefaltTenantId
-	}
-	if cx, ok := a.tenants[tenantId]; ok {
-		return cx
-	} else {
-		h.RaiseAny(errors.Technical("invalid_tenant: " + tenantId))
-		return nil
-	}
+func (a adapter) Create(model interface{}) error {
+	return a.internal.Create(model).Error
 }
 
-func (a adapter) Create(ctx micro.Ctx, model interface{}) error {
-	return a.get(ctx).Create(model).Error
+func (a adapter) Save(model interface{}) error {
+	return a.internal.Save(model).Error
 }
 
-func (a adapter) Save(ctx micro.Ctx, model interface{}) error {
-	return a.get(ctx).Save(model).Error
-}
-
-func (a adapter) Exists(ctx micro.Ctx, model any, q micro.Query) (bool, error) {
+func (a adapter) Exists(model any, q micro.Query) (bool, error) {
 	var count int64
-	res := a.buildQuery(ctx, model, q).Count(&count)
+	res := a.buildQuery(model, q).Count(&count)
 	return count > 0, res.Error
 }
 
-func (a adapter) Find(ctx micro.Ctx, target any, q micro.Query) error {
-	res := a.buildQuery(ctx, target, q).Find(target)
+func (a adapter) Find(target any, q micro.Query) error {
+	res := a.buildQuery(target, q).Find(target)
 	return res.Error
 }
 
-func (a adapter) First(ctx micro.Ctx, model any, q micro.Query) error {
-	res := a.buildQuery(ctx, model, q).First(model)
+func (a adapter) First(model any, q micro.Query) error {
+	res := a.buildQuery(model, q).First(model)
 	if res.Error == gorm.ErrRecordNotFound {
 		return micro.ErrRecordNotFound
 	}
@@ -69,28 +52,28 @@ func (a adapter) First(ctx micro.Ctx, model any, q micro.Query) error {
 	return res.Error
 }
 
-func (a adapter) Count(ctx micro.Ctx, model any, q micro.Query) (int64, error) {
+func (a adapter) Count(model any, q micro.Query) (int64, error) {
 	var count int64
-	res := a.buildQuery(ctx, model, q).Count(&count)
+	res := a.buildQuery(model, q).Count(&count)
 	return count, res.Error
 }
 
-func (a adapter) Delete(ctx micro.Ctx, model any, q micro.Query) (int64, error) {
-	res := a.buildQuery(ctx, model, q).Delete(model)
+func (a adapter) Delete(model any, q micro.Query) (int64, error) {
+	res := a.buildQuery(model, q).Delete(model)
 	return res.RowsAffected, res.Error
 }
 
-func (a adapter) Execute(ctx micro.Ctx, model any, q micro.Query) (int64, error) {
-	res := a.get(ctx).Raw(q.Raw, q.Args...).Scan(model)
+func (a adapter) Execute(model any, q micro.Query) (int64, error) {
+	res := a.internal.Raw(q.Raw, q.Args...).Scan(model)
 	return res.RowsAffected, res.Error
 }
 
-func (a adapter) buildQuery(ctx micro.Ctx, model any, q micro.Query) *gorm.DB {
+func (a adapter) buildQuery(model any, q micro.Query) *gorm.DB {
 	var builder *gorm.DB
 	if q.Model != nil {
-		builder = a.get(ctx).Model(q.Model)
+		builder = a.internal.Model(q.Model)
 	} else {
-		builder = a.get(ctx).Model(model)
+		builder = a.internal.Model(model)
 	}
 
 	if q.Raw != "" {
@@ -110,90 +93,48 @@ func (a adapter) buildQuery(ctx micro.Ctx, model any, q micro.Query) *gorm.DB {
 	return builder
 }
 
-func (a adapter) Patch(ctx micro.Ctx, model interface{}, id string, data map[string]interface{}) (int64, error) {
-	res := a.get(ctx).Model(model).Where("id=?", id).Updates(data)
+func (a adapter) Patch(model interface{}, id string, data map[string]interface{}) (int64, error) {
+	res := a.internal.Model(model).Where("id=?", id).Updates(data)
 	return res.RowsAffected, res.Error
 }
 
-func (a adapter) Ping(ctx micro.Ctx) error {
-	return a.get(ctx).Exec("SELECT 1").Error
+func (a adapter) Ping() error {
+	return a.internal.Exec("SELECT 1").Error
 }
 
-func (a adapter) Transaction(ctx micro.Ctx, cb func(tx micro.DataSource) error) error {
-	return a.get(ctx).Transaction(func(tx *gorm.DB) error {
-		return cb(&adapter{current: tx})
+func (a adapter) Transaction(cb func(tx micro.DataSource) error) error {
+	return a.internal.Transaction(func(tx *gorm.DB) error {
+		return cb(&adapter{
+			internal: tx,
+		})
 	})
 }
 
 func (a adapter) Close() {
-	for _, db := range a.tenants {
-		sqlDB, err := db.DB()
-		if err != nil {
-			log.Printf("unable to close database: %s", err)
-		} else {
-			sqlDB.Close()
-		}
+	sqlDB, err := a.internal.DB()
+	if err != nil {
+		log.Printf("unable to close database: %s", err)
+	} else {
+		sqlDB.Close()
 	}
 }
 
-func (a adapter) Migrate() {
-	a.MigrateTenant(micro.DefaltTenantId)
-	if a.tenants != nil {
-		for tenant := range a.tenants {
-			if tenant != micro.DefaltTenantId {
-				a.MigrateTenant(tenant)
-			}
-		}
-	}
-}
-
-func (a adapter) MigrateTenants(tenant []string) {
-	for _, t := range tenant {
-		a.MigrateTenant(t)
-	}
-}
-
-func (a adapter) MigrateTenant(tenant string) {
-
-	db := a.get(micro.Ctx{TenantId: tenant})
-
-	goose.SetBaseFS(a.config.Migrations)
+func (a adapter) Migrate(fs fs.FS, location string) {
+	goose.SetBaseFS(fs)
 	goose.SetTableName("z_migrations")
-	goose.SetDialect(db.Dialector.Name())
-
-	location := "shared"
-
-	if tenant != micro.DefaltTenantId {
-		location = "tenant"
-	}
-	cnx, err := db.DB()
+	goose.SetDialect(a.internal.Dialector.Name())
+	cnx, err := a.internal.DB()
 	dir := location
 	if err = goose.Up(cnx, dir, goose.WithAllowMissing()); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func NewGormAdapter(config *micro.DataSourceCfg) micro.DataSource {
-	start := time.Now()
-	defer func() {
-		log.Printf("Gorm adapter initialized in %s", time.Since(start))
-	}()
-
-	links := map[string]*gorm.DB{}
-	db := createLink(config.Url, "public")
-
-	links[micro.DefaltTenantId] = db
-
-	if config.TenantLoader != nil {
-		for _, tenant := range config.TenantLoader.GetTenant() {
-			links[tenant] = createLink(config.Url, tenant)
-		}
+func NewGormAdapter(url string, schema string) micro.DataSource {
+	db := createLink(url, schema)
+	return &adapter{
+		internal: db,
 	}
-
-	adater := &adapter{tenants: links, config: config}
-
-	adater.Migrate()
-	return adater
 }
 
 func createLink(url string, dbschema string) *gorm.DB {

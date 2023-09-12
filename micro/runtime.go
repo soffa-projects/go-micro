@@ -34,7 +34,7 @@ func (app *App) Get(key string) string {
 
 func (app *App) Cleanup() {
 	if app.Env.DB != nil {
-		app.Env.DB.Close()
+		app.Env.Close()
 	}
 }
 
@@ -105,7 +105,7 @@ func (app *App) Run(addr ...string) {
 	defer func() {
 		_ = app.Env.Router.Shutdown()
 		if app.Env.DB != nil {
-			app.Env.DB.Close()
+			app.Env.Close()
 		}
 	}()
 

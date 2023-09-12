@@ -316,61 +316,51 @@ func handleRequest(c echo.Context, handler interface{}) (err error) {
 		return fmt.Errorf("handler must be a function with the first argument of type micro.Ctx")
 	}
 
-	/*
-	   handlerValue := reflect.ValueOf(handler)
-	   if handlerValue.Kind() != reflect.Func {
-	     return fmt.Errorf("handler is not a function")
-	   }
-
-	   handlerType := handlerValue.Type()
-	   numArgs := handlerType.NumIn()
-
-	   var mArgs []reflect.Value
-	   reqCtxType := reflect.TypeOf(micro.Ctx{}).Elem()
-
-	*/
-
 	ctx := createRouteContext(c)
 	tenantId := ctx.TenantId
 	if tenantId == "" {
-		tenantId = micro.DefaltTenantId
+		tenantId = micro.DefaultTenantId
 	} else {
 		log.Debugf("current tenant_id is %s", tenantId)
 	}
 
-	args := []reflect.Value{reflect.ValueOf(ctx)}
+	return ctx.Tx(func(tx micro.Ctx) error {
 
-	if numIn == 2 {
-		inputType := handlerType.In(1)
-		inputValue := reflect.New(inputType).Elem()
-		modelInput := inputValue.Addr().Interface() //
-		if err = Bind(c, modelInput); err != nil {
-			log.Errorf("validation failed for %s\n%v", c.Request().RequestURI, err.Error())
-			return err
+		args := []reflect.Value{reflect.ValueOf(tx)}
+
+		if numIn == 2 {
+			inputType := handlerType.In(1)
+			inputValue := reflect.New(inputType).Elem()
+			modelInput := inputValue.Addr().Interface() //
+			if err = Bind(c, modelInput); err != nil {
+				log.Errorf("validation failed for %s\n%v", c.Request().RequestURI, err.Error())
+				return err
+			}
+			args = append(args, inputValue)
 		}
-		args = append(args, inputValue)
-	}
 
-	handlerValue := reflect.ValueOf(handler)
-	res := handlerValue.Call(args)
+		handlerValue := reflect.ValueOf(handler)
 
-	if len(res) == 1 {
-		result = res[0].Interface()
-	} else if len(res) == 2 {
-		if res[1].IsNil() {
+		res := handlerValue.Call(args)
+
+		if len(res) == 1 {
 			result = res[0].Interface()
+		} else if len(res) == 2 {
+			if res[1].IsNil() {
+				result = res[0].Interface()
+			} else {
+				return res[1].Interface().(error)
+			}
 		} else {
-			return res[1].Interface().(error)
+			return fmt.Errorf("invalid handler return type")
 		}
-	} else {
-		return fmt.Errorf("invalid handler return type")
-	}
 
-	if err != nil {
-		log.Errorf("Error while handling request %s -- %v", c.Request().RequestURI, err.Error())
-		return mapHttpResponse(err, c)
-	}
-	return c.JSON(http.StatusOK, result)
+		if err != nil {
+			log.Errorf("Error while handling request %s -- %v", c.Request().RequestURI, err.Error())
+			return mapHttpResponse(err, c)
+		}
+		return c.JSON(http.StatusOK, result)
+	})
 }
 
 func mapHttpResponse(err error, c echo.Context) error {
@@ -445,16 +435,10 @@ func createMiddlewares(filters []micro.MiddlewareFunc) []echo.MiddlewareFunc {
 func createRouteContext(c echo.Context) micro.Ctx {
 	value := c.Get(micro.AuthKey)
 	if value == nil {
-		return micro.Ctx{
-			TenantId: micro.DefaltTenantId,
-			Auth:     nil,
-		}
+		return micro.NewCtx(micro.DefaultTenantId)
 	}
 	auth := value.(*micro.Authentication)
-	return micro.Ctx{
-		TenantId: auth.TenantId,
-		Auth:     auth,
-	}
+	return micro.NewAuthCtx(auth)
 }
 
 func init() {

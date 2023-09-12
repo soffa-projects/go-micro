@@ -5,33 +5,31 @@ import (
 	"io/fs"
 )
 
-type DataSourceCfg struct {
+/*type DataSourceCfg struct {
 	Production   bool
 	Url          string
 	Migrations   fs.FS
 	TenantLoader TenantLoader
-}
+}*/
 
 type DataSourceMigrations interface {
-	Migrate()
-	MigrateTenants(tenants []string)
-	MigrateTenant(tenant string)
+	Migrate(fs fs.FS, location string)
 }
 
 type DataSource interface {
 	DataSourceMigrations
-	//Transaction(func(tx DataSource) error) error
+	Transaction(func(tx DataSource) error) error
 	Close()
-	Save(ctx Ctx, target any) error
-	Create(ctx Ctx, target any) error
-	Ping(ctx Ctx) error
-	Delete(Ctx, any, Query) (int64, error)
-	Exists(Ctx, any, Query) (bool, error)
-	First(Ctx, any, Query) error
-	Find(Ctx, any, Query) error
-	Count(Ctx, any, Query) (int64, error)
-	Execute(Ctx, any, Query) (int64, error)
-	Patch(ctx Ctx, model any, id string, data map[string]interface{}) (int64, error)
+	Save(target any) error
+	Create(target any) error
+	Ping() error
+	Delete(any, Query) (int64, error)
+	Exists(any, Query) (bool, error)
+	First(any, Query) error
+	Find(any, Query) error
+	Count(any, Query) (int64, error)
+	Execute(any, Query) (int64, error)
+	Patch(model any, id string, data map[string]interface{}) (int64, error)
 }
 
 var ErrRecordNotFound = errors.Functional("record not found")

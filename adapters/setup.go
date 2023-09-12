@@ -81,13 +81,24 @@ func setupDatabase(env *micro.Env, cfg micro.Cfg) {
 		return
 	}
 	databaseUrl := h.RequireEnv(micro.DatabaseUrl)
-	dbAdapter := NewGormAdapter(&micro.DataSourceCfg{
-		Url:          databaseUrl,
-		Migrations:   migrationsFS,
-		TenantLoader: env.TenantLoader,
-	})
 
-	env.DB = dbAdapter
+	if env.TenantLoader == nil {
+		env.TenantLoader = micro.NewFixedTenantLoader([]string{micro.DefaultTenantId})
+	}
+
+	tenants := env.TenantLoader.GetTenant()
+	links := map[string]micro.DataSource{}
+
+	for _, tenant := range tenants {
+		links[tenant] = NewGormAdapter(databaseUrl, tenant)
+		if tenant == micro.DefaultTenantId {
+			links[tenant].Migrate(migrationsFS, "shared")
+		} else {
+			links[tenant].Migrate(migrationsFS, "tenant")
+		}
+	}
+
+	env.DB = links
 }
 
 func setupScheduler(env *micro.Env) {

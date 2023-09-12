@@ -51,10 +51,7 @@ func (s *GoCronSchedulingAdapter) schedule(interval string, limit int, handler f
 		}()
 
 		if tenants == nil || len(tenants) == 0 {
-
-			err := handler(micro.Ctx{
-				TenantId: micro.DefaltTenantId,
-			})
+			err := handler(micro.NewCtx(micro.DefaultTenantId))
 			if err != nil {
 				log.Error(err)
 			}
@@ -62,9 +59,7 @@ func (s *GoCronSchedulingAdapter) schedule(interval string, limit int, handler f
 
 		} else {
 			for _, tenantId := range tenants {
-				err := handler(micro.Ctx{
-					TenantId: tenantId,
-				})
+				err := handler(micro.NewCtx(tenantId))
 				if err != nil {
 					log.Error(err)
 				}

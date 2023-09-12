@@ -5,7 +5,7 @@ import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
-var DefaltTenantId = "public"
+var DefaultTenantId = "public"
 
 type Feature struct {
 	Name string
@@ -41,12 +41,13 @@ type TenantLoader interface {
 type Ctx struct {
 	TenantId string
 	Auth     *Authentication
+	db       DataSource
 }
 
 type Env struct {
 	Ctx
 	Conf          interface{}
-	DB            DataSource
+	DB            map[string]DataSource
 	Router        Router
 	Scheduler     Scheduler
 	TokenProvider TokenProvider
@@ -85,7 +86,41 @@ func (ctx Ctx) IsAuthenticated() bool {
 }
 
 func NewCtx(tenantId string) Ctx {
+	var db DataSource
+	if db == nil && globalEnv != nil && globalEnv.DB != nil {
+		db = globalEnv.DB[tenantId]
+	}
 	return Ctx{
 		TenantId: tenantId,
+		db:       db,
+	}
+}
+
+func NewAuthCtx(auth *Authentication) Ctx {
+	if auth == nil {
+		return NewCtx(DefaultTenantId)
+	}
+	ctx := NewCtx(auth.TenantId)
+	ctx.Auth = auth
+	return ctx
+}
+
+func (ctx Ctx) Tx(cb func(tx Ctx) error) error {
+	db := ctx.db
+	if db == nil {
+		db = globalEnv.DB[ctx.TenantId]
+	}
+	return db.Transaction(func(tx DataSource) error {
+		return cb(Ctx{
+			TenantId: ctx.TenantId,
+			Auth:     ctx.Auth,
+			db:       tx,
+		})
+	})
+}
+
+func (e Env) Close() {
+	for _, db := range e.DB {
+		db.Close()
 	}
 }
