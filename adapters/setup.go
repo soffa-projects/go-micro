@@ -70,6 +70,8 @@ func prepareMultiTenancy(env *micro.Env, cfg micro.Cfg) {
 	if cfg.MultiTenant {
 		defaultTenants := h.RequireEnv(micro.DatabaseInitialTenants)
 		tenantLoader = micro.NewFixedTenantLoader(strings.Split(defaultTenants, ","))
+	} else {
+		tenantLoader = micro.NewFixedTenantLoader([]string{micro.DefaultTenantId})
 	}
 	env.TenantLoader = tenantLoader
 }
@@ -89,12 +91,18 @@ func setupDatabase(env *micro.Env, cfg micro.Cfg) {
 	tenants := env.TenantLoader.GetTenant()
 	links := map[string]micro.DataSource{}
 
-	for _, tenant := range tenants {
-		links[tenant] = NewGormAdapter(databaseUrl, tenant)
-		if tenant == micro.DefaultTenantId {
-			links[tenant].Migrate(migrationsFS, "shared")
-		} else {
-			links[tenant].Migrate(migrationsFS, "tenant")
+	if cfg.MultiTenant {
+		for _, tenant := range tenants {
+			links[tenant] = NewGormAdapter(databaseUrl, tenant)
+			if tenant == micro.DefaultTenantId {
+				links[tenant].Migrate(migrationsFS, "shared")
+			} else {
+				links[tenant].Migrate(migrationsFS, "tenant")
+			}
+		}
+	} else {
+		for _, tenant := range tenants {
+			links[tenant] = NewGormAdapter(databaseUrl, "")
 		}
 	}
 

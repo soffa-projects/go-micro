@@ -79,7 +79,15 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			log.Infof("starting request: %s", c.Request().RequestURI)
+			auth := &micro.Authentication{
+				Authenticated: false,
+				TenantId:      micro.DefaultTenantId,
+			}
+			tenantId := c.Request().Header.Get("X-TenantId")
+			if tenantId != "" {
+				auth.TenantId = tenantId
+			}
+			c.Set(micro.AuthKey, auth)
 			return next(c)
 		}
 	})
@@ -127,13 +135,7 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 			Skipper: func(c echo.Context) bool {
 				// let the app decide which routes require authentication
 				authz := c.Request().Header.Get("Authorization")
-				tenantId := c.Request().Header.Get("X-TenantId")
 				if authz == "" || !strings.HasPrefix(authz, "Bearer ") {
-					auth := &micro.Authentication{
-						Authenticated: false,
-						TenantId:      tenantId,
-					}
-					c.Set(micro.AuthKey, auth)
 					return true
 				}
 				return false

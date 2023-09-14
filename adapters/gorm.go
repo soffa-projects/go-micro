@@ -169,7 +169,7 @@ func createLink(url string, dbschema string) *gorm.DB {
 		Logger: dbLogger,
 	})
 
-	if err == nil && supportSchema {
+	if err == nil && supportSchema && dbschema != "" {
 		err = gdb.Exec("create schema if not exists  " + dbschema).Error
 	}
 
