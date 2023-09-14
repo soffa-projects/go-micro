@@ -34,6 +34,7 @@ type RouterConfig struct {
 	RemoveTrailSlash bool
 	BodyLimit        string
 	Swagger          bool
+	MultiTenant      bool
 	//Prometheus       *PrometheusCfg
 	//JwtAuth    bool
 	TokenProvider TokenProvider

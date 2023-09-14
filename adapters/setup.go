@@ -32,7 +32,7 @@ func NewApp(name string, version string, cfg micro.Cfg) *micro.App {
 	setupMailer(env)
 	setupNotifications(env)
 	setupTokenProvider(env)
-	setupRouter(env)
+	setupRouter(env, cfg)
 
 	// configure locales if any
 	return &micro.App{
@@ -162,7 +162,7 @@ func setupTokenProvider(env *micro.Env) {
 	env.TokenProvider = micro.NewTokenProvider(secret)
 }
 
-func setupRouter(env *micro.Env) {
+func setupRouter(env *micro.Env, cfg micro.Cfg) {
 	router := NewEchoAdapter(
 		micro.RouterConfig{
 			Cors:             true,
@@ -171,6 +171,7 @@ func setupRouter(env *micro.Env) {
 			BodyLimit:        "2M",
 			Swagger:          true,
 			TokenProvider:    env.TokenProvider,
+			MultiTenant:      cfg.MultiTenant,
 		})
 	env.Router = router
 }

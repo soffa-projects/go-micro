@@ -79,13 +79,13 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			tenantId := c.Request().Header.Get("X-TenantId")
+			if tenantId == "" {
+				tenantId = micro.DefaultTenantId
+			}
 			auth := &micro.Authentication{
 				Authenticated: false,
-				TenantId:      micro.DefaultTenantId,
-			}
-			tenantId := c.Request().Header.Get("X-TenantId")
-			if tenantId != "" {
-				auth.TenantId = tenantId
+				TenantId:      tenantId,
 			}
 			c.Set(micro.AuthKey, auth)
 			return next(c)
@@ -155,10 +155,15 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 				sub, _ := claims0.GetSubject()
 				issuer, _ := claims0.GetIssuer()
 
+				tenantId := micro.DefaultTenantId
+				if config.MultiTenant && issuer != "" {
+					tenantId = issuer
+				}
+
 				auth := &micro.Authentication{
 					UserId:        sub,
 					Authenticated: true,
-					TenantId:      issuer,
+					TenantId:      tenantId,
 					Token: &micro.AuthToken{
 						Issuer: issuer,
 					},
