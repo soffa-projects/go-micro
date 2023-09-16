@@ -203,11 +203,9 @@ func (r entityRepoImpl[T]) CountAll(ctx Ctx) (int64, error) {
 }
 
 func (r entityRepoImpl[T]) Query(ctx Ctx, target interface{}, raw string, args ...interface{}) error {
-	var m = new(T)
 	return ctx.db.Find(target, Query{
-		Model: m,
-		Raw:   raw,
-		Args:  args,
+		Raw:  raw,
+		Args: args,
 	})
 }
 
