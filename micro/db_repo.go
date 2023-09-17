@@ -3,6 +3,7 @@ package micro
 import (
 	serrors "errors"
 	"github.com/fabriqs/go-micro/util/errors"
+	"github.com/fabriqs/go-micro/util/h"
 	"github.com/thoas/go-funk"
 )
 
@@ -203,6 +204,9 @@ func (r entityRepoImpl[T]) CountAll(ctx Ctx) (int64, error) {
 }
 
 func (r entityRepoImpl[T]) Query(ctx Ctx, target interface{}, raw string, args ...interface{}) error {
+	if !h.IsPointer(target) {
+		panic("target must be a pointer")
+	}
 	return ctx.db.Find(target, Query{
 		Raw:  raw,
 		Args: args,
