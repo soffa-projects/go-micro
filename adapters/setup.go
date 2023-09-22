@@ -102,7 +102,8 @@ func setupDatabase(env *micro.Env, cfg micro.Cfg) {
 		}
 	} else {
 		for _, tenant := range tenants {
-			links[tenant] = NewGormAdapter(databaseUrl, "")
+			links[tenant] = NewGormAdapter(databaseUrl, tenant)
+			links[tenant].Migrate(migrationsFS, ".")
 		}
 	}
 

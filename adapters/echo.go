@@ -187,6 +187,15 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 					if value, ok := claims["email"]; ok {
 						auth.Email = value.(string)
 					}
+					if value, ok := claims["phone"]; ok {
+						auth.PhonerNumber = value.(string)
+					} else if value, ok = claims["phone_number"]; ok {
+						auth.PhonerNumber = value.(string)
+					}
+					auth.Claims = make(map[string]interface{})
+					for key, value := range claims {
+						auth.Claims[key] = value
+					}
 				}
 
 				c.Set(micro.AuthKey, auth)

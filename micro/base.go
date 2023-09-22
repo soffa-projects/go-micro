@@ -29,9 +29,21 @@ type Authentication struct {
 	Name          string
 	Email         string
 	UserId        string
+	PhonerNumber  string
+	Claims        map[string]interface{}
 	TenantId      string
 	Roles         []string
 	Permissions   []string
+}
+
+func (a *Authentication) Claim(key string) interface{} {
+	if a.Claims == nil {
+		return nil
+	}
+	if v, ok := a.Claims[key]; ok {
+		return v
+	}
+	return nil
 }
 
 type TenantLoader interface {

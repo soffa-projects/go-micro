@@ -15,8 +15,17 @@ func IsNotNil(v interface{}) bool {
 	return v != nil
 }
 
-func IsStrEmpty(v string) bool {
-	return len(strings.TrimSpace(v)) == 0
+func IsStrEmpty(v interface{}) bool {
+	if v == nil {
+		return true
+	}
+	var value string
+	if IsPointer(v) {
+		value = *v.(*string)
+	} else {
+		value = v.(string)
+	}
+	return len(strings.TrimSpace(value)) == 0
 }
 
 func IsPointer(arg interface{}) bool {
