@@ -21,6 +21,10 @@ func PtrStr(value string) *string {
 	return &value
 }
 
+func Ptr[T any](value T) *T {
+	return &value
+}
+
 func RandomString(length int) string {
 	source := rand.NewSource(time.Now().UnixNano())
 	random := rand.New(source)
