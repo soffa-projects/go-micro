@@ -137,7 +137,7 @@ func T(messageId string, other ...string) string {
 	if globalLocalizer == nil {
 		return messageId
 	}
-	theOrder := ""
+	theOrder := messageId
 	if len(other) > 0 {
 		theOrder = other[0]
 	}
