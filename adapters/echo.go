@@ -6,6 +6,7 @@ import (
 	"github.com/fabriqs/go-micro/micro"
 	"github.com/fabriqs/go-micro/schema"
 	"github.com/fabriqs/go-micro/util/errors"
+	"github.com/fabriqs/go-micro/util/h"
 	"github.com/getsentry/sentry-go"
 	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/go-playground/validator/v10"
@@ -76,16 +77,30 @@ type echoRouterAdapter struct {
 func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 	e := echo.New()
 	e.HideBanner = true
+	e.IPExtractor = echo.ExtractIPFromXFFHeader()
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+
+			// print request headers
+
+			//
+
 			tenantId := c.Request().Header.Get("X-TenantId")
 			if tenantId == "" {
 				tenantId = micro.DefaultTenantId
 			}
+			ipAddress := c.RealIP()
+			if h.IsStrEmpty(ipAddress) {
+				ipAddress = c.Request().RemoteAddr
+			}
+			if h.IsStrEmpty(ipAddress) {
+				ipAddress = "0.0.0.0"
+			}
 			auth := &micro.Authentication{
 				Authenticated: false,
 				TenantId:      tenantId,
+				IpAddress:     ipAddress,
 			}
 			c.Set(micro.AuthKey, auth)
 			return next(c)
@@ -160,9 +175,17 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 					tenantId = issuer
 				}
 
+				ipAddress := c.RealIP()
+				if h.IsStrEmpty(ipAddress) {
+					ipAddress = c.Request().RemoteAddr
+				}
+				if h.IsStrEmpty(ipAddress) {
+					ipAddress = "0.0.0.0"
+				}
 				auth := &micro.Authentication{
 					UserId:        sub,
 					Authenticated: true,
+					IpAddress:     ipAddress,
 					TenantId:      tenantId,
 					Token: &micro.AuthToken{
 						Issuer: issuer,

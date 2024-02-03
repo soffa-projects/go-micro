@@ -34,6 +34,7 @@ type Authentication struct {
 	TenantId      string
 	Roles         []string
 	Permissions   []string
+	IpAddress     string
 }
 
 func (a *Authentication) Claim(key string) interface{} {
