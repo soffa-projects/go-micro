@@ -117,6 +117,11 @@ func NewCtx(tenantId string) Ctx {
 	}
 }
 
+func (e Env) DefaultDB() DataSource {
+	db := e.DB[DefaultTenantId]
+	return db
+}
+
 func NewAuthCtx(auth *Authentication) Ctx {
 	if auth == nil {
 		return NewCtx(DefaultTenantId)
