@@ -155,7 +155,7 @@ func setupNotifications(env *micro.Env) {
 }
 
 func setupTokenProvider(env *micro.Env) {
-	secret := h.RequireEnv(micro.ServerToken)
+	secret := h.GetEnv(micro.ServerToken)
 	if secret == "" {
 		log.Infof("env.%s is empty, skipping token provider setup", micro.ServerToken)
 		return
