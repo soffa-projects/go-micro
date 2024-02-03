@@ -59,7 +59,7 @@ func (app *App) Init(features []Feature) *App {
 
 	if env.Notifier != nil {
 		di.Register(Notifications, env.Notifier)
-		Subscribe(NotificationTopic, func(ctx Ctx, payload Event) error {
+		_ = Subscribe(NotificationTopic, func(ctx Ctx, payload Event) error {
 			return env.Notifier.Send(ctx, Notification{
 				Message: payload.Event,
 			})
