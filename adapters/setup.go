@@ -2,12 +2,12 @@ package adapters
 
 import (
 	"fmt"
-	"github.com/fabriqs/go-micro/micro"
-	"github.com/fabriqs/go-micro/util/h"
 	"github.com/joho/godotenv"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/pelletier/go-toml/v2"
 	log "github.com/sirupsen/logrus"
+	"github.com/soffa-projects/go-micro/micro"
+	"github.com/soffa-projects/go-micro/util/h"
 	"golang.org/x/text/language"
 	"os"
 	"strings"

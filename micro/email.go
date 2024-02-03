@@ -1,7 +1,7 @@
 package micro
 
 import (
-	"github.com/fabriqs/go-micro/util/h"
+	"github.com/soffa-projects/go-micro/util/h"
 )
 
 type EmailAddress struct {

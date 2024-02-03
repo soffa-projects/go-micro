@@ -1,9 +1,9 @@
 package micro
 
 import (
-	"github.com/fabriqs/go-micro/util/dates"
 	"github.com/golang-jwt/jwt/v5"
 	log "github.com/sirupsen/logrus"
+	"github.com/soffa-projects/go-micro/util/dates"
 	"time"
 )
 

@@ -2,10 +2,10 @@ package adapters
 
 import (
 	"fmt"
-	"github.com/fabriqs/go-micro/micro"
-	"github.com/fabriqs/go-micro/util/h"
 	"github.com/go-resty/resty/v2"
 	log "github.com/sirupsen/logrus"
+	"github.com/soffa-projects/go-micro/micro"
+	"github.com/soffa-projects/go-micro/util/h"
 )
 
 type discordClient struct {

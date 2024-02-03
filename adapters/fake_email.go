@@ -1,7 +1,7 @@
 package adapters
 
 import (
-	"github.com/fabriqs/go-micro/micro"
+	"github.com/soffa-projects/go-micro/micro"
 )
 
 type FakeEmailSender struct {

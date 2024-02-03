@@ -2,10 +2,10 @@ package micro
 
 import (
 	"embed"
-	"github.com/fabriqs/go-micro/di"
-	"github.com/fabriqs/go-micro/util/h"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	log "github.com/sirupsen/logrus"
+	"github.com/soffa-projects/go-micro/di"
+	"github.com/soffa-projects/go-micro/util/h"
 	"os"
 	"os/signal"
 	"syscall"

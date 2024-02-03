@@ -3,10 +3,10 @@ package adapters
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/fabriqs/go-micro/micro"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 	log "github.com/sirupsen/logrus"
+	"github.com/soffa-projects/go-micro/micro"
 )
 
 type SendGridEmailSender struct {

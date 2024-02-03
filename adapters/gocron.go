@@ -1,9 +1,9 @@
 package adapters
 
 import (
-	"github.com/fabriqs/go-micro/micro"
 	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
+	"github.com/soffa-projects/go-micro/micro"
 	"time"
 )
 

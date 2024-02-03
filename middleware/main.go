@@ -2,8 +2,8 @@ package middleware
 
 import (
 	"fmt"
-	"github.com/fabriqs/go-micro/micro"
-	"github.com/fabriqs/go-micro/util/errors"
+	"github.com/soffa-projects/go-micro/micro"
+	"github.com/soffa-projects/go-micro/util/errors"
 	"strings"
 )
 

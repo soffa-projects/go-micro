@@ -2,8 +2,8 @@ package micro
 
 import (
 	serrors "errors"
-	"github.com/fabriqs/go-micro/util/errors"
-	"github.com/fabriqs/go-micro/util/h"
+	"github.com/soffa-projects/go-micro/util/errors"
+	"github.com/soffa-projects/go-micro/util/h"
 	"github.com/thoas/go-funk"
 )
 

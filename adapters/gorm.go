@@ -1,9 +1,9 @@
 package adapters
 
 import (
-	"github.com/fabriqs/go-micro/micro"
 	_ "github.com/jackc/pgx/v5"
 	"github.com/pressly/goose/v3"
+	"github.com/soffa-projects/go-micro/micro"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

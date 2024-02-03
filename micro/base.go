@@ -1,8 +1,8 @@
 package micro
 
 import (
-	"github.com/fabriqs/go-micro/di"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/soffa-projects/go-micro/di"
 )
 
 var DefaultTenantId = "public"

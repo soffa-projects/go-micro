@@ -1,7 +1,7 @@
 package micro
 
 import (
-	"github.com/fabriqs/go-micro/util/errors"
+	"github.com/soffa-projects/go-micro/util/errors"
 	"io/fs"
 )
 

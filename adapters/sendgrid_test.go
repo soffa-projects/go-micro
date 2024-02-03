@@ -2,8 +2,8 @@ package adapters
 
 import (
 	"github.com/brianvoe/gofakeit/v6"
-	"github.com/fabriqs/go-micro/micro"
-	"github.com/fabriqs/go-micro/util/h"
+	"github.com/soffa-projects/go-micro/micro"
+	"github.com/soffa-projects/go-micro/util/h"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
