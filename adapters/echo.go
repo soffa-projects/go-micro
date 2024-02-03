@@ -86,7 +86,7 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 
 			//
 
-			tenantId := c.Request().Header.Get("X-TenantId")
+			tenantId := c.Request().Header.Get(micro.TenantIdHttpHeader)
 			if tenantId == "" {
 				tenantId = micro.DefaultTenantId
 			}
@@ -322,7 +322,10 @@ func (r *echoGroupRoute) request(method string, path string, handler interface{}
 				err = mapHttpResponse(err0.(error), c)
 			}
 		}()
-		return handleRequest(c, handler)
+		if err0 := handleRequest(c, handler); err0 != nil {
+			return mapHttpResponse(err0, c)
+		}
+		return nil
 
 	}, createMiddlewares(filters)...)
 }

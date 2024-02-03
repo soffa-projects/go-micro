@@ -67,7 +67,11 @@ func (app *App) Init(features []Feature) *App {
 	}
 
 	for _, feat := range features {
-		if feat.Init != nil {
+		if feat.Configure != nil {
+			if err := feat.Configure(app); err != nil {
+				log.Fatalf("failed to init feature %s.\n%v", feat.Name, err)
+			}
+		} else if feat.Init != nil {
 			component, err := feat.Init(app)
 			if err != nil {
 				log.Fatalf("failed to init feature %s.\n%v", feat.Name, err)

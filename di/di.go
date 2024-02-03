@@ -55,6 +55,14 @@ func Resolve[T Component](typ T) *T {
 	return nil
 }
 
+func ResolveByName[T interface{}](name string) T {
+	if component, ok := registry[name]; ok {
+		return component.(T)
+	}
+	log.Fatalf("failed to resolve component %s", name)
+	panic("failed to resolve component")
+}
+
 func Clear() {
 	registry = make(map[string]any)
 }

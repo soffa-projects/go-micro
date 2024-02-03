@@ -2,6 +2,7 @@ package tests
 
 import (
 	"github.com/gavv/httpexpect/v2"
+	"github.com/soffa-projects/go-micro/micro"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -121,6 +122,11 @@ func (r *HttpRequest) Expect() *HttpTestResult {
 		t:      r.t,
 		result: req.Expect(),
 	}
+}
+
+func (r *HttpRequest) TenantId(value string) *HttpRequest {
+	r.headers[micro.TenantIdHttpHeader] = value
+	return r
 }
 
 func (r *HttpRequest) Header(name string, value string) *HttpRequest {

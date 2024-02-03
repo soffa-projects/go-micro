@@ -3,13 +3,18 @@ package micro
 import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/soffa-projects/go-micro/di"
+	"github.com/soffa-projects/go-micro/util/errors"
+	"github.com/soffa-projects/go-micro/util/h"
 )
 
 var DefaultTenantId = "public"
+var TenantIdHttpHeader = "X-TenantId"
 
 type Feature struct {
 	Name string
-	Init func(app *App) (di.Component, error)
+	// Deprecated: Use Configure instead.
+	Init      func(app *App) (di.Component, error)
+	Configure func(app *App) error
 }
 
 type App struct {
@@ -91,6 +96,10 @@ func NewFixedTenantLoader(tenants []string) *FixedTenantLoader {
 	return &FixedTenantLoader{tenants: tenants}
 }
 
+func (ctx Ctx) IsDefaultTenant() bool {
+	return ctx.TenantId == DefaultTenantId
+}
+
 func (ctx Ctx) IsAuthenticated() bool {
 	if ctx.Auth == nil {
 		return false
@@ -122,6 +131,12 @@ func (ctx Ctx) Tx(cb func(tx Ctx) error) error {
 	db := ctx.db
 	if db == nil {
 		db = globalEnv.DB[ctx.TenantId]
+	}
+	if db == nil {
+		if !h.IsStrEmpty(ctx.TenantId) {
+			return errors.Technical("MISSING_DB_TENANT_CONFIG", ctx.TenantId)
+		}
+		return errors.Technical("MISSING_DB_CONFIG")
 	}
 	return db.Transaction(func(tx DataSource) error {
 		return cb(Ctx{

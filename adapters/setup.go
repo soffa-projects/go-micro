@@ -90,6 +90,7 @@ func setupDatabase(env *micro.Env, cfg micro.Cfg) {
 
 	tenants := env.TenantLoader.GetTenant()
 	links := map[string]micro.DataSource{}
+	env.DB = links
 
 	if cfg.MultiTenant {
 		for _, tenant := range tenants {
@@ -107,7 +108,6 @@ func setupDatabase(env *micro.Env, cfg micro.Cfg) {
 		}
 	}
 
-	env.DB = links
 }
 
 func setupScheduler(env *micro.Env) {
