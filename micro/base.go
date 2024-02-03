@@ -2,9 +2,8 @@ package micro
 
 import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	log "github.com/sirupsen/logrus"
 	"github.com/soffa-projects/go-micro/di"
-	"github.com/soffa-projects/go-micro/util/errors"
-	"github.com/soffa-projects/go-micro/util/h"
 )
 
 var DefaultTenantId = "public"
@@ -133,10 +132,11 @@ func (ctx Ctx) Tx(cb func(tx Ctx) error) error {
 		db = globalEnv.DB[ctx.TenantId]
 	}
 	if db == nil {
-		if !h.IsStrEmpty(ctx.TenantId) {
-			return errors.Technical("MISSING_DB_TENANT_CONFIG", ctx.TenantId)
-		}
-		return errors.Technical("MISSING_DB_CONFIG")
+		log.Warn("no db found in current context (skipping global transaction)")
+		return cb(Ctx{
+			TenantId: ctx.TenantId,
+			Auth:     ctx.Auth,
+		})
 	}
 	return db.Transaction(func(tx DataSource) error {
 		return cb(Ctx{

@@ -20,6 +20,7 @@ type Cfg struct {
 	DefaultLocale string
 	Locales       string
 	MultiTenant   bool
+	DisableRouter bool
 }
 
 // ----------------------------------------------

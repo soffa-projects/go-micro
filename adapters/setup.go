@@ -164,6 +164,9 @@ func setupTokenProvider(env *micro.Env) {
 }
 
 func setupRouter(env *micro.Env, cfg micro.Cfg) {
+	if cfg.DisableRouter {
+		return
+	}
 	router := NewEchoAdapter(
 		micro.RouterConfig{
 			Cors:             true,
