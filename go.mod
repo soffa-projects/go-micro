@@ -1,4 +1,4 @@
-module github.com/fabriqs/go-micro
+module github.com/soffa-projects/go-micro
 
 go 1.19
 
