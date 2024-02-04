@@ -190,8 +190,9 @@ func setupRedis(env *micro.Env, cfg micro.Cfg) {
 				}
 			}
 			registrationName := fmt.Sprintf("discovery_service_%s", env.AppName)
-			log.Infof("registering service: %s", registrationName)
-			h.RaiseAny(rdb.Set(ctx, registrationName, fmt.Sprintf("%s:%d", hostname, env.ServerPort), 0).Err())
+			serviceUrl := fmt.Sprintf("%s:%d", hostname, env.ServerPort)
+			log.Infof("registering service: %s -> %s", registrationName, registrationName)
+			h.RaiseAny(rdb.Set(ctx, registrationName, serviceUrl, 0).Err())
 		}
 	}
 
