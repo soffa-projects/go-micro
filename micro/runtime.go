@@ -13,8 +13,8 @@ import (
 )
 
 type Cfg struct {
-	Name            string
-	Version         string
+	//Name            string
+	//Version         string
 	Features        []Feature
 	FS              embed.FS
 	DefaultLocale   string

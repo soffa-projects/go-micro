@@ -65,6 +65,8 @@ type Ctx struct {
 type Env struct {
 	Ctx
 	Conf          interface{}
+	AppName       string
+	AppVersion    string
 	DB            map[string]DataSource
 	ServerPort    int
 	Router        Router

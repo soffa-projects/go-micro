@@ -26,6 +26,8 @@ func NewApp(name string, version string, cfg micro.Cfg) *micro.App {
 
 	env := &micro.Env{
 		Production: isProduction,
+		AppName:    name,
+		AppVersion: version,
 	}
 	env.ServerPort = h.ToInt(h.GetEnvOrDefault("PORT", "8080"))
 	setupLocales(env, cfg)
@@ -187,7 +189,7 @@ func setupRedis(env *micro.Env, cfg micro.Cfg) {
 					hostname = h.GetEnvOrDefault("RAILWAY_PUBLIC_DOMAIN", hostname)
 				}
 			}
-			registrationName := fmt.Sprintf("discovery_service_%s", cfg.Name)
+			registrationName := fmt.Sprintf("discovery_service_%s", env.AppName)
 			log.Infof("registering service: %s", registrationName)
 			h.RaiseAny(rdb.Set(ctx, registrationName, fmt.Sprintf("%s:%d", hostname, env.ServerPort), 0).Err())
 		}
