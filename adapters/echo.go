@@ -114,6 +114,9 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 		e.Use(middleware.CORS())
 	}
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+		Skipper: func(c echo.Context) bool {
+			return strings.Contains(c.Request().URL.Path, ".")
+		},
 		Format: "method=${method}, uri=${uri}, status=${status}\n",
 	}))
 	e.Use(middleware.Recover())
