@@ -182,7 +182,7 @@ func setupRedis(env *micro.Env, cfg micro.Cfg) {
 
 		if cfg.EnableDiscovery {
 			ctx := context.Background()
-			hostname := h.GetEnvOrDefault("HOSTNAME", "localhost")
+			hostname := h.GetEnvOrDefault("SERVICE_HOST", "localhost")
 			if hostname == "localhost" {
 				hostname = h.GetEnvOrDefault("RAILWAY_PRIVATE_DOMAIN", hostname)
 				if hostname == "localhost" {
