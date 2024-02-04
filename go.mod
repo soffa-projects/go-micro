@@ -20,6 +20,7 @@ require (
 	github.com/nicksnyder/go-i18n/v2 v2.4.0
 	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/pressly/goose/v3 v3.18.0
+	github.com/redis/go-redis/v9 v9.4.0
 	github.com/rs/xid v1.5.0
 	github.com/sendgrid/sendgrid-go v3.14.0+incompatible
 	github.com/sirupsen/logrus v1.9.3
@@ -39,7 +40,9 @@ require (
 	github.com/TylerBrock/colorjson v0.0.0-20200706003622-8a50f05110d2 // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/andybalholm/brotli v1.1.0 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect

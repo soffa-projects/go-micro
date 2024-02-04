@@ -2,6 +2,7 @@ package micro
 
 import (
 	"github.com/nicksnyder/go-i18n/v2/i18n"
+	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 	"github.com/soffa-projects/go-micro/di"
 )
@@ -65,6 +66,7 @@ type Env struct {
 	Ctx
 	Conf          interface{}
 	DB            map[string]DataSource
+	ServerPort    int
 	Router        Router
 	Scheduler     Scheduler
 	TokenProvider TokenProvider
@@ -73,6 +75,7 @@ type Env struct {
 	Production    bool
 	TenantLoader  TenantLoader
 	Localizer     *i18n.Localizer
+	RedisClient   *redis.Client
 }
 
 type AppCfg struct {

@@ -1,10 +1,12 @@
 package adapters
 
 import (
+	"context"
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/pelletier/go-toml/v2"
+	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 	"github.com/soffa-projects/go-micro/micro"
 	"github.com/soffa-projects/go-micro/util/h"
@@ -25,6 +27,7 @@ func NewApp(name string, version string, cfg micro.Cfg) *micro.App {
 	env := &micro.Env{
 		Production: isProduction,
 	}
+	env.ServerPort = h.ToInt(h.GetEnvOrDefault("PORT", "8080"))
 	setupLocales(env, cfg)
 	prepareMultiTenancy(env, cfg)
 	setupDatabase(env, cfg)
@@ -32,6 +35,7 @@ func NewApp(name string, version string, cfg micro.Cfg) *micro.App {
 	setupMailer(env)
 	setupNotifications(env)
 	setupTokenProvider(env)
+	setupRedis(env, cfg)
 	setupRouter(env, cfg)
 
 	// configure locales if any
@@ -156,14 +160,43 @@ func setupNotifications(env *micro.Env) {
 
 func setupTokenProvider(env *micro.Env) {
 	secret := h.GetEnv(micro.ServerToken)
-	if secret == "" {
-		log.Infof("env.%s is empty, skipping token provider setup", micro.ServerToken)
+	if secret != "" {
+		log.Infof("env.%s detected, configuring token provider", micro.ServerToken)
+		env.TokenProvider = micro.NewTokenProvider(secret)
 		return
 	}
-	env.TokenProvider = micro.NewTokenProvider(secret)
+}
+
+func setupRedis(env *micro.Env, cfg micro.Cfg) {
+	redisUrl := h.GetEnv(micro.RedisUrl)
+	if redisUrl != "" {
+		log.Infof("env.%s detected, configuring redis client", micro.RedisUrl)
+		opts, err := redis.ParseURL(redisUrl)
+		if err != nil {
+			log.Fatalf("error configuring redis: %s", err)
+		}
+		rdb := redis.NewClient(opts)
+		env.RedisClient = rdb
+
+		if cfg.EnableDiscovery {
+			ctx := context.Background()
+			hostname := h.GetEnvOrDefault("HOSTNAME", "localhost")
+			if hostname == "localhost" {
+				hostname = h.GetEnvOrDefault("RAILWAY_PRIVATE_DOMAIN", hostname)
+				if hostname == "localhost" {
+					hostname = h.GetEnvOrDefault("RAILWAY_PUBLIC_DOMAIN", hostname)
+				}
+			}
+			registrationName := fmt.Sprintf("discovery_service_%s", cfg.Name)
+			log.Infof("registering service: %s", registrationName)
+			h.RaiseAny(rdb.Set(ctx, registrationName, fmt.Sprintf("%s:%d", hostname, env.ServerPort), 0).Err())
+		}
+	}
+
 }
 
 func setupRouter(env *micro.Env, cfg micro.Cfg) {
+
 	if cfg.DisableRouter {
 		return
 	}
