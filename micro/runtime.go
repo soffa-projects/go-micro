@@ -15,13 +15,13 @@ import (
 type Cfg struct {
 	//Name            string
 	//Version         string
-	Features        []Feature
-	FS              embed.FS
-	DefaultLocale   string
-	Locales         string
-	MultiTenant     bool
-	EnableDiscovery bool
-	DisableRouter   bool
+	Features         []Feature
+	FS               embed.FS
+	DefaultLocale    string
+	AvailableLocales []string
+	MultiTenant      bool
+	EnableDiscovery  bool
+	DisableRouter    bool
 }
 
 // ----------------------------------------------

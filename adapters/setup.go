@@ -50,15 +50,22 @@ func NewApp(name string, version string, cfg micro.Cfg) *micro.App {
 }
 
 func setupLocales(env *micro.Env, cfg micro.Cfg) {
+	if cfg.AvailableLocales == nil && cfg.DefaultLocale == "" {
+		return
+	}
 	exists, localesFS := h.CheckFsFolder(cfg.FS, "locales")
 	if !exists {
-		log.Info("no config/locales found, skipping")
+		log.Error("no config/locales is missing, skipping")
 		return
 	}
 	bundle := i18n.NewBundle(language.French)
 	bundle.RegisterUnmarshalFunc("toml", toml.Unmarshal)
 
-	locales := strings.Split(cfg.Locales, ",")
+	locales := cfg.AvailableLocales
+	if (locales == nil || len(locales) == 0) && cfg.DefaultLocale != "" {
+		locales = []string{cfg.DefaultLocale}
+	}
+
 	for _, lang := range locales {
 		_, err := bundle.LoadMessageFileFS(localesFS, fmt.Sprintf("locale.%s.toml", lang))
 		if err != nil {
@@ -66,7 +73,7 @@ func setupLocales(env *micro.Env, cfg micro.Cfg) {
 		}
 	}
 	localizer := i18n.NewLocalizer(bundle, locales...)
-	log.Infof("%d locales loaded", len(cfg.Locales))
+	log.Infof("%s locales loaded", strings.Join(locales, ","))
 	env.Localizer = localizer
 
 }
@@ -123,9 +130,9 @@ func setupScheduler(env *micro.Env) {
 func setupMailer(env *micro.Env) {
 	config := h.GetEnv(micro.EmailSender, "MAILER")
 	if config == "" {
-		log.Infof("env.%s is empty, skipping mailer setup", micro.EmailSender)
 		return
 	}
+	log.Infof("env.%s found, configuring mailer", micro.EmailSender)
 	var mailer micro.Mailer
 	mailerConfig := strings.Split(config, "://")
 	if mailerConfig[0] == "sendgrid" {
@@ -140,12 +147,12 @@ func setupMailer(env *micro.Env) {
 
 func setupNotifications(env *micro.Env) {
 
-	config := h.GetEnv(micro.NotificationSender, "NOTIFIER")
+	config := h.GetEnv(micro.NotificationSender)
 	if config == "" {
-		log.Info("env.NOTIFICATION_SENDER is empty, skipping notifications setup")
 		return
 	}
 
+	log.Infof("env.%s found, configuring...", micro.NotificationSender)
 	var service micro.NotificationService
 
 	if strings.Contains(config, "discord.com") {
@@ -162,40 +169,40 @@ func setupNotifications(env *micro.Env) {
 
 func setupTokenProvider(env *micro.Env) {
 	secret := h.GetEnv(micro.ServerToken)
-	if secret != "" {
-		log.Infof("env.%s detected, configuring token provider", micro.ServerToken)
-		env.TokenProvider = micro.NewTokenProvider(secret)
+	if secret == "" {
 		return
 	}
+	log.Infof("env.%s detected, configuring token provider", micro.ServerToken)
+	env.TokenProvider = micro.NewTokenProvider(secret)
 }
 
 func setupRedis(env *micro.Env, cfg micro.Cfg) {
 	redisUrl := h.GetEnv(micro.RedisUrl)
-	if redisUrl != "" {
-		log.Infof("env.%s detected, configuring redis client", micro.RedisUrl)
-		opts, err := redis.ParseURL(redisUrl)
-		if err != nil {
-			log.Fatalf("error configuring redis: %s", err)
-		}
-		rdb := redis.NewClient(opts)
-		env.RedisClient = rdb
-
-		if cfg.EnableDiscovery {
-			ctx := context.Background()
-			hostname := h.GetEnvOrDefault("SERVICE_HOST", "localhost")
-			if hostname == "localhost" {
-				hostname = h.GetEnvOrDefault("RAILWAY_PRIVATE_DOMAIN", hostname)
-				if hostname == "localhost" {
-					hostname = h.GetEnvOrDefault("RAILWAY_PUBLIC_DOMAIN", hostname)
-				}
-			}
-			registrationName := fmt.Sprintf("discovery_service_%s", env.AppName)
-			serviceUrl := fmt.Sprintf("%s:%d", hostname, env.ServerPort)
-			log.Infof("registering service: %s -> %s", registrationName, serviceUrl)
-			h.RaiseAny(rdb.Set(ctx, registrationName, serviceUrl, 0).Err())
-		}
+	if redisUrl == "" {
+		return
 	}
+	log.Infof("env.%s detected, configuring redis client", micro.RedisUrl)
+	opts, err := redis.ParseURL(redisUrl)
+	if err != nil {
+		log.Fatalf("error configuring redis: %s", err)
+	}
+	rdb := redis.NewClient(opts)
+	env.RedisClient = rdb
 
+	if cfg.EnableDiscovery {
+		ctx := context.Background()
+		hostname := h.GetEnvOrDefault("SERVICE_HOST", "localhost")
+		if hostname == "localhost" {
+			hostname = h.GetEnvOrDefault("RAILWAY_PRIVATE_DOMAIN", hostname)
+			if hostname == "localhost" {
+				hostname = h.GetEnvOrDefault("RAILWAY_PUBLIC_DOMAIN", hostname)
+			}
+		}
+		registrationName := fmt.Sprintf("discovery_service_%s", env.AppName)
+		serviceUrl := fmt.Sprintf("%s:%d", hostname, env.ServerPort)
+		log.Infof("registering service: %s -> %s", registrationName, serviceUrl)
+		h.RaiseAny(rdb.Set(ctx, registrationName, serviceUrl, 0).Err())
+	}
 }
 
 func setupRouter(env *micro.Env, cfg micro.Cfg) {
