@@ -1,7 +1,6 @@
 package adapters
 
 import (
-	"context"
 	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -190,20 +189,14 @@ func setupRedis(env *micro.Env, cfg micro.Cfg) {
 	}
 	rdb := redis.NewClient(opts)
 	env.RedisClient = rdb
-
 	if cfg.EnableDiscovery {
-		ctx := context.Background()
-		hostname := h.GetEnvOrDefault("SERVICE_HOST", "localhost")
-		if hostname == "localhost" {
-			hostname = h.GetEnvOrDefault("RAILWAY_PRIVATE_DOMAIN", hostname)
-			if hostname == "localhost" {
-				hostname = h.GetEnvOrDefault("RAILWAY_PUBLIC_DOMAIN", hostname)
-			}
+		env.DiscoverySericeName = micro.DiscoveryServicePrefix + env.AppName
+		hostname := h.GetEnv("SERVICE_HOST", "RAILWAY_PRIVATE_DOMAIN", "RAILWAY_PUBLIC_DOMAIN")
+		if hostname == "" {
+			hostname = "localhost"
 		}
-		registrationName := fmt.Sprintf("discovery_service_%s", env.AppName)
-		serviceUrl := fmt.Sprintf("%s:%d", hostname, env.ServerPort)
-		log.Infof("registering service: %s -> %s", registrationName, serviceUrl)
-		h.RaiseAny(rdb.Set(ctx, registrationName, serviceUrl, 0).Err())
+		env.DiscoveryServiceUrl = fmt.Sprintf("%s:%d", hostname, env.ServerPort)
+
 	}
 }
 

@@ -1,7 +1,9 @@
 package micro
 
 import (
+	"context"
 	"embed"
+	"fmt"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	log "github.com/sirupsen/logrus"
 	"github.com/soffa-projects/go-micro/di"
@@ -122,6 +124,17 @@ func (app *App) Run(addr ...string) {
 			app.Env.Scheduler.StartAsync()
 			log.Infof("scheduler started")
 		}()
+	}
+
+	if app.Env.RedisClient != nil && app.Env.DiscoverySericeName != "" {
+		rc := app.Env.RedisClient
+		h.RaiseAny(rc.Set(context.Background(), app.Env.DiscoverySericeName, app.Env.DiscoveryServiceUrl, 0).Err())
+		rc.Publish(context.Background(), DiscoveryServicesChannel, fmt.Sprintf(
+			"%s:%s",
+			app.Name,
+			app.Env.DiscoveryServiceUrl,
+		))
+		log.Infof("discovery service url broadcasted: %s -> %s", app.Name, app.Env.DiscoveryServiceUrl)
 	}
 	/*if err != nil {
 		fmt.Printf("error: %v", err)

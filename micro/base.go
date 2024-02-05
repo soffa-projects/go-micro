@@ -72,20 +72,22 @@ type Ctx struct {
 
 type Env struct {
 	Ctx
-	Conf          interface{}
-	AppName       string
-	AppVersion    string
-	DB            map[string]DataSource
-	ServerPort    int
-	Router        Router
-	Scheduler     Scheduler
-	TokenProvider TokenProvider
-	Notifier      NotificationService
-	Mailer        Mailer
-	Production    bool
-	TenantLoader  TenantLoader
-	Localizer     *i18n.Localizer
-	RedisClient   *redis.Client
+	Conf                interface{}
+	AppName             string
+	AppVersion          string
+	DB                  map[string]DataSource
+	ServerPort          int
+	Router              Router
+	Scheduler           Scheduler
+	TokenProvider       TokenProvider
+	Notifier            NotificationService
+	Mailer              Mailer
+	Production          bool
+	TenantLoader        TenantLoader
+	Localizer           *i18n.Localizer
+	RedisClient         *redis.Client
+	DiscoverySericeName string
+	DiscoveryServiceUrl string
 }
 
 type AppCfg struct {
