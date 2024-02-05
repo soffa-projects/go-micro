@@ -91,6 +91,10 @@ func (app *App) Init(features []Feature) *App {
 	return app
 }
 
+func (app *App) AddShutdownListener(listener func()) {
+	app.ShutdownListeners = append(app.ShutdownListeners, listener)
+}
+
 func (app *App) Run(addr ...string) {
 	// setup exit code for graceful shutdown
 	var exitCode int
@@ -115,6 +119,11 @@ func (app *App) Run(addr ...string) {
 		_ = app.Env.Router.Shutdown()
 		if app.Env.DB != nil {
 			app.Env.Close()
+		}
+		if app.ShutdownListeners != nil {
+			for _, listener := range app.ShutdownListeners {
+				listener()
+			}
 		}
 	}()
 

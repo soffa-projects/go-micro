@@ -18,9 +18,10 @@ type Feature struct {
 }
 
 type App struct {
-	Name    string
-	Version string
-	Env     *Env
+	Name              string
+	Version           string
+	Env               *Env
+	ShutdownListeners []func()
 }
 
 type AuthToken struct {

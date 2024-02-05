@@ -41,9 +41,10 @@ func NewApp(name string, version string, cfg micro.Cfg) *micro.App {
 
 	// configure locales if any
 	return &micro.App{
-		Name:    name,
-		Version: version,
-		Env:     env,
+		Name:              name,
+		Version:           version,
+		Env:               env,
+		ShutdownListeners: []func(){},
 	}
 
 }
