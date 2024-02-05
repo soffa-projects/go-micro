@@ -82,11 +82,6 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-
-			// print request headers
-
-			//
-
 			tenantId := c.Request().Header.Get(micro.TenantIdHttpHeader)
 			if tenantId == "" {
 				tenantId = micro.DefaultTenantId
@@ -100,8 +95,8 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 			}
 			auth := &micro.Authentication{
 				Authenticated: false,
-				TenantId:      tenantId,
-				IpAddress:     ipAddress,
+				//TenantId:      tenantId,
+				IpAddress: ipAddress,
 			}
 			c.Set(micro.AuthKey, auth)
 			return next(c)
@@ -190,7 +185,7 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 					UserId:        sub,
 					Authenticated: true,
 					IpAddress:     ipAddress,
-					TenantId:      tenantId,
+					// TenantId:      tenantId,
 					Token: &micro.AuthToken{
 						Issuer: issuer,
 					},
@@ -201,7 +196,7 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 					claims := claims0.(jwt.MapClaims)
 
 					if value, ok := h.MapLookup(claims, "tenant", "tenant_id", "tenantId"); ok {
-						auth.TenantId = value.(string)
+						tenantId = value.(string)
 					}
 					if value, ok := h.MapLookup(claims, "roles", "role"); ok {
 						auth.Roles = strings.Split(value.(string), ",")
@@ -226,6 +221,7 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 					}
 				}
 
+				c.Set(micro.TenantId, tenantId)
 				c.Set(micro.AuthKey, auth)
 			},
 		}))
@@ -565,11 +561,12 @@ func createMiddlewares(filters []micro.MiddlewareFunc) []echo.MiddlewareFunc {
 
 func createRouteContext(c echo.Context) micro.Ctx {
 	value := c.Get(micro.AuthKey)
+	tenantId := c.Get(micro.TenantId).(string)
 	if value == nil {
-		return micro.NewCtx(micro.DefaultTenantId)
+		return micro.NewCtx(tenantId)
 	}
 	auth := value.(*micro.Authentication)
-	return micro.NewAuthCtx(auth)
+	return micro.NewAuthCtx(tenantId, auth)
 }
 
 func init() {

@@ -37,10 +37,10 @@ type Authentication struct {
 	UserId        string
 	PhonerNumber  string
 	Claims        map[string]interface{}
-	TenantId      string
-	Roles         []string
-	Permissions   []string
-	IpAddress     string
+	//TenantId      string
+	Roles       []string
+	Permissions []string
+	IpAddress   string
 }
 
 func (a *Authentication) Claim(key string) interface{} {
@@ -138,11 +138,11 @@ func (e Env) DefaultDB() DataSource {
 	return db
 }
 
-func NewAuthCtx(auth *Authentication) Ctx {
+func NewAuthCtx(tenantId string, auth *Authentication) Ctx {
 	if auth == nil {
 		return NewCtx(DefaultTenantId)
 	}
-	ctx := NewCtx(auth.TenantId)
+	ctx := NewCtx(tenantId)
 	ctx.Auth = auth
 	return ctx
 }

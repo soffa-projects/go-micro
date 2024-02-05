@@ -11,6 +11,7 @@ import (
 //
 //goland:noinspection GoUnusedConst
 const AuthKey = "user"
+const TenantId = "tenant"
 
 type Router interface {
 	BaseRouter
