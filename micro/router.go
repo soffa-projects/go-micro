@@ -2,6 +2,7 @@ package micro
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"strings"
 )
@@ -77,11 +78,13 @@ func NewRouterUpstream(data map[string]string) *RouterUpstream {
 
 func (u *RouterUpstream) Set(key string, value string) {
 	u.data[key] = value
+	log.Infof("upstream updated: %s --> %s", key, value)
 }
 
 func (u *RouterUpstream) Lookup(path string) string {
 	for p, up := range u.data {
 		if strings.HasPrefix(path, p) {
+			log.Infof("upstream found: %s --> %s", path, up)
 			return fmt.Sprintf("%s%s", up, strings.TrimPrefix(path, p))
 		}
 	}
