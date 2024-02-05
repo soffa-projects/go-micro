@@ -127,7 +127,7 @@ func (app *App) Run(addr ...string) {
 		}
 	}()
 
-	if app.Env.Scheduler != nil {
+	if app.Env.Scheduler != nil && !app.Env.Scheduler.IsEmpty() {
 		go func() {
 			time.Sleep(10 * time.Second)
 			app.Env.Scheduler.StartAsync()

@@ -12,6 +12,7 @@ type GoCronSchedulingAdapter struct {
 	//ctx          micro.Ctx
 	internal     *gocron.Scheduler
 	tenantLoader micro.TenantLoader
+	empty        bool
 }
 
 func NewGoCronAdapter(tenantLoader micro.TenantLoader) micro.Scheduler {
@@ -19,7 +20,12 @@ func NewGoCronAdapter(tenantLoader micro.TenantLoader) micro.Scheduler {
 	return &GoCronSchedulingAdapter{
 		internal:     s,
 		tenantLoader: tenantLoader,
+		empty:        true,
 	}
+}
+
+func (s *GoCronSchedulingAdapter) IsEmpty() bool {
+	return s.empty
 }
 
 func (s *GoCronSchedulingAdapter) StartAsync() {
@@ -49,7 +55,6 @@ func (s *GoCronSchedulingAdapter) schedule(interval string, limit int, handler f
 				log.Error(err)
 			}
 		}()
-
 		if tenants == nil || len(tenants) == 0 {
 			err := handler(micro.NewCtx(micro.DefaultTenantId))
 			if err != nil {
@@ -72,5 +77,7 @@ func (s *GoCronSchedulingAdapter) schedule(interval string, limit int, handler f
 	}
 	if err != nil {
 		log.Fatal(err)
+	} else {
+		s.empty = false
 	}
 }
