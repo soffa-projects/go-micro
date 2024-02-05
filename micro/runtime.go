@@ -127,14 +127,16 @@ func (app *App) Run(addr ...string) {
 	}
 
 	if app.Env.RedisClient != nil && app.Env.DiscoverySericeName != "" {
-		rc := app.Env.RedisClient
-		h.RaiseAny(rc.Set(context.Background(), app.Env.DiscoverySericeName, app.Env.DiscoveryServiceUrl, 0).Err())
-		rc.Publish(context.Background(), DiscoveryServicesChannel, fmt.Sprintf(
-			"%s:%s",
-			app.Name,
-			app.Env.DiscoveryServiceUrl,
-		))
-		log.Infof("discovery service url broadcasted: %s -> %s", app.Name, app.Env.DiscoveryServiceUrl)
+		go func() {
+			rc := app.Env.RedisClient
+			h.RaiseAny(rc.Set(context.Background(), app.Env.DiscoverySericeName, app.Env.DiscoveryServiceUrl, 0).Err())
+			rc.Publish(context.Background(), DiscoveryServicesChannel, fmt.Sprintf(
+				"%s:%s",
+				app.Name,
+				app.Env.DiscoveryServiceUrl,
+			))
+			log.Infof("discovery service url broadcasted: %s -> %s", app.Name, app.Env.DiscoveryServiceUrl)
+		}()
 	}
 	/*if err != nil {
 		fmt.Printf("error: %v", err)
