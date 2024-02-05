@@ -288,11 +288,11 @@ func (r *echoRouterAdapter) Group(path string, filters ...micro.MiddlewareFunc) 
 	}
 }
 
-func (r *echoRouterAdapter) Proxy(path string, upstreams map[string]string, handler micro.ProxyHandlerFunc) {
+func (r *echoRouterAdapter) Proxy(path string, upstreams *map[string]string, handler micro.ProxyHandlerFunc) {
 	r.e.Any(path, func(c echo.Context) error {
 		var upstream string
 		lpath := c.Request().URL.Path
-		for p, up := range upstreams {
+		for p, up := range *upstreams {
 			if strings.HasPrefix(lpath, p) {
 				upstream = fmt.Sprintf("%s%s", up, strings.TrimPrefix(lpath, p))
 				break

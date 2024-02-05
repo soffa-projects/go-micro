@@ -15,7 +15,7 @@ type Router interface {
 	Start(addr string) error
 	Shutdown() error
 	Group(path string, filters ...MiddlewareFunc) BaseRouter
-	Proxy(path string, upstreams map[string]string, handler ProxyHandlerFunc)
+	Proxy(path string, upstreams *map[string]string, handler ProxyHandlerFunc)
 }
 
 type BaseRouter interface {
