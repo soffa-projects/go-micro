@@ -16,6 +16,7 @@ import (
 	"github.com/soffa-projects/go-micro/util/errors"
 	"github.com/soffa-projects/go-micro/util/h"
 	echoSwagger "github.com/swaggo/echo-swagger"
+	"io"
 	"net/http"
 	"reflect"
 	"strings"
@@ -146,7 +147,7 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 		e.Pre(middleware.RemoveTrailingSlash())
 	}
 
-	if config.TokenProvider != nil {
+	if config.TokenProvider != nil && !config.DisableJwtFilter {
 		e.Use(echojwt.WithConfig(echojwt.Config{
 			SigningKey: []byte(config.TokenProvider.SigningKey()),
 			ContextKey: micro.AuthKey,
@@ -198,10 +199,11 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 				//TODO: F depenedency injection (UserService)
 				if claims0 != nil && reflect.TypeOf(claims0).String() == "jwt.MapClaims" {
 					claims := claims0.(jwt.MapClaims)
-					if value, ok := claims["roles"]; ok {
-						auth.Roles = strings.Split(value.(string), ",")
+
+					if value, ok := h.MapLookup(claims, "tenant", "tenant_id", "tenantId"); ok {
+						auth.TenantId = value.(string)
 					}
-					if value, ok := claims["role"]; ok {
+					if value, ok := h.MapLookup(claims, "roles", "role"); ok {
 						auth.Roles = strings.Split(value.(string), ",")
 					}
 					if value, ok := claims["permissions"]; ok {
@@ -213,14 +215,14 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 					if value, ok := claims["email"]; ok {
 						auth.Email = value.(string)
 					}
-					if value, ok := claims["phone"]; ok {
-						auth.PhonerNumber = value.(string)
-					} else if value, ok = claims["phone_number"]; ok {
+					if value, ok := h.MapLookup(claims, "phone", "phone_number", "phoneNumber"); ok {
 						auth.PhonerNumber = value.(string)
 					}
 					auth.Claims = make(map[string]interface{})
 					for key, value := range claims {
-						auth.Claims[key] = value
+						if h.IsNotNil(value) && !h.IsStrEmpty(value) {
+							auth.Claims[key] = value
+						}
 					}
 				}
 
@@ -286,6 +288,76 @@ func (r *echoRouterAdapter) Group(path string, filters ...micro.MiddlewareFunc) 
 	}
 }
 
+func (r *echoRouterAdapter) Proxy(path string, upstreams map[string]string, handler micro.ProxyHandlerFunc) {
+	r.e.Any(path, func(c echo.Context) error {
+		var upstream string
+		lpath := c.Request().URL.Path
+		for p, up := range upstreams {
+			if strings.HasPrefix(lpath, p) {
+				upstream = fmt.Sprintf("%s%s", up, strings.TrimPrefix(lpath, p))
+				break
+			}
+		}
+		if upstream == "" {
+			return echo.NewHTTPError(http.StatusNotFound, "no_upstream_found")
+		}
+		ctx := createRouteContext(c)
+		authz := c.Request().Header.Get("Authorization")
+		bearerAuthz := ""
+		if authz != "" && strings.HasPrefix(strings.ToLower(authz), "bearer ") {
+			bearerAuthz = authz[7:]
+		}
+		pctx := micro.ProxyCtx{
+			Ctx:           ctx,
+			UpstreamId:    strings.TrimPrefix(path, "/"),
+			UpstreamUrl:   upstream,
+			Authorization: authz,
+			Bearer:        bearerAuthz,
+		}
+
+		uctx, err := handler(pctx)
+
+		if err != nil {
+			return mapHttpResponse(err, c)
+		}
+
+		req, _ := http.NewRequest(
+			c.Request().Method,
+			upstream,
+			c.Request().Body,
+		)
+		copyHeader(c.Request().Header, req.Header)
+
+		if uctx != nil && uctx.Authorization != "" {
+			req.Header.Set("Authorization", uctx.Authorization)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+		//goland:noinspection ALL
+		defer resp.Body.Close()
+		copyHeader(resp.Header, c.Response().Header())
+		c.Response().WriteHeader(resp.StatusCode)
+		_, err = io.Copy(c.Response().Writer, resp.Body)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadGateway, "Failed to send upstream response")
+		}
+
+		return nil
+	})
+}
+
+func copyHeader(src, dst http.Header) {
+	for k, vv := range src {
+		for _, v := range vv {
+			dst.Add(k, v)
+		}
+	}
+}
+
 // =================================================================================
 // ECHO GROUP ROUTE
 // =================================================================================
@@ -316,7 +388,28 @@ func (r *echoGroupRoute) DELETE(path string, handler interface{}, filters ...mic
 	r.request(http.MethodDelete, path, handler, filters)
 }
 
+func (r *echoGroupRoute) Any(path string, handler interface{}, filters ...micro.MiddlewareFunc) {
+	r.request("*", path, handler, filters)
+}
+
 func (r *echoGroupRoute) request(method string, path string, handler interface{}, filters []micro.MiddlewareFunc) {
+
+	if method == "*" {
+		r.g.Any(path, func(c echo.Context) (err error) {
+			defer func() {
+				if err0 := recover(); err0 != nil {
+					log.Error(err0)
+					err = mapHttpResponse(err0.(error), c)
+				}
+			}()
+			if err0 := handleRequest(c, handler); err0 != nil {
+				return mapHttpResponse(err0, c)
+			}
+			return nil
+
+		}, createMiddlewares(filters)...)
+		return
+	}
 
 	r.g.Match([]string{method}, path, func(c echo.Context) (err error) {
 		defer func() {

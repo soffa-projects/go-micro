@@ -23,6 +23,15 @@ func ToJsonString(input interface{}) (string, error) {
 	}
 }
 
+func ToJsonBytes(input interface{}) ([]byte, error) {
+	if jsonBytes, err := json.Marshal(input); err != nil {
+		log.Error("Error marshaling JSON:", err)
+		return nil, err
+	} else {
+		return jsonBytes, nil
+	}
+}
+
 func Diff(original, updated interface{}) map[string]interface{} {
 	originalValue := reflect.ValueOf(original)
 	updatedValue := reflect.ValueOf(updated)
@@ -58,6 +67,10 @@ func Diff(original, updated interface{}) map[string]interface{} {
 
 func DeserializeJson(input string, out interface{}) error {
 	return json.Unmarshal([]byte(input), out)
+}
+
+func DeserializeJsonBytes(input []byte, out interface{}) error {
+	return json.Unmarshal(input, out)
 }
 
 func DeserializeJsonUri(input string, out interface{}) error {

@@ -3,6 +3,7 @@ module github.com/soffa-projects/go-micro
 go 1.19
 
 require (
+	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef
 	github.com/brianvoe/gofakeit/v6 v6.23.1
 	github.com/gavv/httpexpect/v2 v2.16.0

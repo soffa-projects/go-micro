@@ -15,9 +15,17 @@ func IsNotNil(v interface{}) bool {
 	return v != nil
 }
 
+func IsString(value interface{}) bool {
+	_, ok := value.(string)
+	return ok
+}
+
 func IsStrEmpty(v interface{}) bool {
 	if v == nil {
 		return true
+	}
+	if !IsString(v) {
+		return false
 	}
 	var value string
 	if IsPointer(v) {

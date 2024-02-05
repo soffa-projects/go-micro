@@ -22,6 +22,7 @@ type Cfg struct {
 	MultiTenant      bool
 	EnableDiscovery  bool
 	DisableRouter    bool
+	DisableJwtFilter bool
 }
 
 // ----------------------------------------------

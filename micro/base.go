@@ -56,6 +56,14 @@ type TenantLoader interface {
 	GetTenant() []string
 }
 
+type ProxyCtx struct {
+	Ctx
+	UpstreamId    string
+	UpstreamUrl   string
+	Authorization string
+	Bearer        string
+}
+
 type Ctx struct {
 	TenantId string
 	Auth     *Authentication

@@ -90,17 +90,19 @@ func prepareMultiTenancy(env *micro.Env, cfg micro.Cfg) {
 }
 
 func setupDatabase(env *micro.Env, cfg micro.Cfg) {
-	exists, migrationsFS := h.CheckFsFolder(cfg.FS, "db/migrations")
-	if !exists {
-		log.Info("no config/db/migrations found, skipping")
+	databaseUrl := h.GetEnv(micro.DatabaseUrl)
+	if databaseUrl == "" {
 		return
 	}
-	databaseUrl := h.RequireEnv(micro.DatabaseUrl)
-
+	log.Infof("env.%s detected, configuring database", micro.DatabaseUrl)
+	exists, migrationsFS := h.CheckFsFolder(cfg.FS, "db/migrations")
+	if !exists {
+		log.Error("no config/db/migrations found, skipping")
+		return
+	}
 	if env.TenantLoader == nil {
 		env.TenantLoader = micro.NewFixedTenantLoader([]string{micro.DefaultTenantId})
 	}
-
 	tenants := env.TenantLoader.GetTenant()
 	links := map[string]micro.DataSource{}
 	env.DB = links
@@ -173,7 +175,7 @@ func setupTokenProvider(env *micro.Env) {
 		return
 	}
 	log.Infof("env.%s detected, configuring token provider", micro.ServerToken)
-	env.TokenProvider = micro.NewTokenProvider(secret)
+	env.TokenProvider = micro.NewJwtTokenProvider(secret)
 }
 
 func setupRedis(env *micro.Env, cfg micro.Cfg) {
@@ -218,6 +220,7 @@ func setupRouter(env *micro.Env, cfg micro.Cfg) {
 			BodyLimit:        "2M",
 			Swagger:          true,
 			TokenProvider:    env.TokenProvider,
+			DisableJwtFilter: cfg.DisableJwtFilter,
 			MultiTenant:      cfg.MultiTenant,
 		})
 	env.Router = router

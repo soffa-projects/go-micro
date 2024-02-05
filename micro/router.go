@@ -15,6 +15,7 @@ type Router interface {
 	Start(addr string) error
 	Shutdown() error
 	Group(path string, filters ...MiddlewareFunc) BaseRouter
+	Proxy(path string, upstreams map[string]string, handler ProxyHandlerFunc)
 }
 
 type BaseRouter interface {
@@ -23,6 +24,7 @@ type BaseRouter interface {
 	PATCH(path string, handler interface{}, filters ...MiddlewareFunc)
 	GET(path string, handler interface{}, filters ...MiddlewareFunc)
 	DELETE(path string, handler interface{}, filters ...MiddlewareFunc)
+	Any(path string, handler interface{}, filters ...MiddlewareFunc)
 }
 
 type JwtCfg struct {
@@ -37,9 +39,10 @@ type RouterConfig struct {
 	MultiTenant      bool
 	//Prometheus       *PrometheusCfg
 	//JwtAuth    bool
-	TokenProvider TokenProvider
-	SentryDsn     string
-	OnShutdown    func()
+	TokenProvider    TokenProvider
+	DisableJwtFilter bool
+	SentryDsn        string
+	OnShutdown       func()
 }
 
 type MiddlewareFunc func(ctx Ctx) error
@@ -47,6 +50,12 @@ type MiddlewareFunc func(ctx Ctx) error
 type RouteFilter func(handler HandlerFunc) HandlerFunc
 
 type HandlerFunc func(c Ctx) (any, error)
+
+type ProxyHandlerFunc func(c ProxyCtx) (*UpstreamCtx, error)
+
+type UpstreamCtx struct {
+	Authorization string
+}
 
 type ErrorResponse struct {
 	Kind    string `json:"kind,omitempty"`
