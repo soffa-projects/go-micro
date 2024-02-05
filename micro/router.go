@@ -1,7 +1,9 @@
 package micro
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 )
 
 // AuthKey is used in adapters
@@ -15,7 +17,7 @@ type Router interface {
 	Start(addr string) error
 	Shutdown() error
 	Group(path string, filters ...MiddlewareFunc) BaseRouter
-	Proxy(path string, upstreams *map[string]string, handler ProxyHandlerFunc)
+	Proxy(path string, upstreams *RouterUpstream, handler ProxyHandlerFunc)
 }
 
 type BaseRouter interface {
@@ -61,4 +63,30 @@ type ErrorResponse struct {
 	Kind    string `json:"kind,omitempty"`
 	Error   string `json:"error,omitempty"`
 	Details any    `json:"details,omitempty"`
+}
+
+type RouterUpstream struct {
+	data map[string]string
+}
+
+func NewRouterUpstream(data map[string]string) *RouterUpstream {
+	return &RouterUpstream{
+		data: data,
+	}
+}
+
+func (u *RouterUpstream) Set(key string, value string) {
+	u.data[key] = value
+}
+
+func (u *RouterUpstream) Lookup(path string) string {
+	for p, up := range u.data {
+		if strings.HasPrefix(path, p) {
+			return fmt.Sprintf("%s%s", up, strings.TrimPrefix(path, p))
+		}
+	}
+	return ""
+}
+func (u *RouterUpstream) All() map[string]string {
+	return u.data
 }
