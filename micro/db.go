@@ -12,8 +12,10 @@ import (
 	TenantLoader TenantLoader
 }*/
 
+const DefaultMigrationsTable = "z_migrations"
+
 type DataSourceMigrations interface {
-	Migrate(fs fs.FS, location string)
+	Migrate(fs fs.FS, location string, migrationsTable string)
 }
 
 type DataSource interface {

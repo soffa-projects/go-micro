@@ -107,19 +107,21 @@ func setupDatabase(env *micro.Env, cfg micro.Cfg) {
 	links := map[string]micro.DataSource{}
 	env.DB = links
 
+	migrationsTable := cfg.TablePrefix + micro.DefaultMigrationsTable
+
 	if cfg.MultiTenant {
 		for _, tenant := range tenants {
 			links[tenant] = NewGormAdapter(databaseUrl, tenant)
 			if tenant == micro.DefaultTenantId {
-				links[tenant].Migrate(migrationsFS, "shared")
+				links[tenant].Migrate(migrationsFS, "shared", migrationsTable)
 			} else {
-				links[tenant].Migrate(migrationsFS, "tenant")
+				links[tenant].Migrate(migrationsFS, "tenant", migrationsTable)
 			}
 		}
 	} else {
 		for _, tenant := range tenants {
 			links[tenant] = NewGormAdapter(databaseUrl, tenant)
-			links[tenant].Migrate(migrationsFS, ".")
+			links[tenant].Migrate(migrationsFS, ".", migrationsTable)
 		}
 	}
 

@@ -119,10 +119,12 @@ func (a adapter) Close() {
 	}
 }
 
-func (a adapter) Migrate(fs fs.FS, location string) {
+func (a adapter) Migrate(fs fs.FS, location string, migrationsTable string) {
 	goose.SetBaseFS(fs)
-	goose.SetTableName("z_migrations")
-	goose.SetDialect(a.internal.Dialector.Name())
+	goose.SetTableName(migrationsTable)
+	if err := goose.SetDialect(a.internal.Dialector.Name()); err != nil {
+		log.Fatalf("unable to set dialect: %s", err)
+	}
 	cnx, err := a.internal.DB()
 	dir := location
 	if err = goose.Up(cnx, dir, goose.WithAllowMissing()); err != nil {

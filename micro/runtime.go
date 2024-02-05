@@ -22,6 +22,7 @@ type Cfg struct {
 	DefaultLocale    string
 	AvailableLocales []string
 	MultiTenant      bool
+	TablePrefix      string
 	EnableDiscovery  bool
 	DisableRouter    bool
 	DisableJwtFilter bool
