@@ -107,9 +107,9 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 			return next(c)
 		}
 	})
-	e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
+	/*e.Use(middleware.GzipWithConfig(middleware.GzipConfig{
 		Level: 5,
-	}))
+	}))*/
 	e.Use(middleware.RequestID())
 	if config.Cors {
 		e.Use(middleware.CORS())
