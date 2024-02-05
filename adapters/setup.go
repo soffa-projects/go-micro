@@ -215,6 +215,7 @@ func setupRouter(env *micro.Env, cfg micro.Cfg) {
 			RemoveTrailSlash: true,
 			BodyLimit:        "2M",
 			Swagger:          true,
+			Production:       env.Production,
 			TokenProvider:    env.TokenProvider,
 			DisableJwtFilter: cfg.DisableJwtFilter,
 			MultiTenant:      cfg.MultiTenant,

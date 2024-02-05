@@ -143,6 +143,10 @@ func (r *HttpTestResult) IsOK() *HttpTestResult {
 	r.result.Status(http.StatusOK)
 	return r
 }
+func (r *HttpTestResult) IsCreated() *HttpTestResult {
+	r.result.Status(http.StatusCreated)
+	return r
+}
 
 func (r *HttpTestResult) IsConflict() *HttpTestResult {
 	r.result.Status(http.StatusConflict)

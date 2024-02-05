@@ -15,6 +15,7 @@ import (
 	"github.com/soffa-projects/go-micro/schema"
 	"github.com/soffa-projects/go-micro/util/errors"
 	"github.com/soffa-projects/go-micro/util/h"
+	"github.com/soffa-projects/go-micro/util/ids"
 	echoSwagger "github.com/swaggo/echo-swagger"
 	"io"
 	"net/http"
@@ -116,7 +117,9 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 		},
 		Format: "method=${method}, uri=${uri}, status=${status}\n",
 	}))
-	e.Use(middleware.Recover())
+	if config.Production {
+		e.Use(middleware.Recover())
+	}
 	if config.SentryDsn != "" {
 		if err := sentry.Init(sentry.ClientOptions{
 			Dsn: config.SentryDsn,
@@ -382,6 +385,97 @@ func (r *echoGroupRoute) Any(path string, handler interface{}, filters ...micro.
 	r.request("*", path, handler, filters)
 }
 
+func (r *echoGroupRoute) Resource(resource string, model any) {
+	modelType := reflect.TypeOf(model)
+	if modelType.Kind() == reflect.Ptr {
+		// If the model is a pointer, get the type it points to
+		modelType = modelType.Elem()
+	}
+	idField, ok := modelType.FieldByName("Id")
+	if !ok {
+		log.Fatalf("model %s does not have an Id field", modelType.Name())
+	}
+	idPrefix := idField.Tag.Get("prefix")
+	sliceType := reflect.SliceOf(modelType)
+
+	r.request(http.MethodGet, "", func(c micro.Ctx) any {
+		db := c.DB()
+		data := reflect.MakeSlice(sliceType, 0, 0).Interface()
+		if err := db.Find(&data, micro.Query{}); err != nil {
+			return err
+		}
+		return map[string]any{
+			fmt.Sprintf("%s", resource): data,
+		}
+	}, nil)
+
+	r.request(http.MethodPost, "", func(c micro.Ctx) any {
+		err, entity := c.Bind(modelType)
+		if err != nil {
+			return err
+		}
+		if err = validateStruct(entity, "insert"); err != nil {
+			return err
+		}
+		db := c.DB()
+		entityValue := reflect.ValueOf(entity).Elem()
+		idValue := entityValue.FieldByName("Id")
+		if idValue.Type().Kind() == reflect.Ptr {
+			idValue.Set(reflect.ValueOf(ids.NewIdPtr(idPrefix)))
+		} else {
+			idValue.Set(reflect.ValueOf(ids.NewId(idPrefix)))
+		}
+		if err = db.Create(entity); err != nil {
+			return err
+		}
+		return entity
+	}, nil)
+
+	r.request(http.MethodPatch, "/:id", func(c micro.Ctx) any {
+		err, entity := c.Bind(modelType)
+		if err != nil {
+			return err
+		}
+		if err = validateStruct(entity, "update"); err != nil {
+			return err
+		}
+		db := c.DB()
+		entityValue := reflect.ValueOf(entity).Elem()
+		idValue := entityValue.FieldByName("Id")
+		var id string
+		if idValue.Type().Kind() == reflect.Ptr {
+			id = *idValue.Interface().(*string)
+		} else {
+			id = idValue.Interface().(string)
+		}
+		var existing = reflect.New(modelType).Interface()
+		if err = db.Find(existing, micro.Query{
+			W:    "id = ?",
+			Args: []interface{}{id},
+		}); err != nil {
+			return err
+		}
+		if err = h.CopyAllFields(existing, entity); err != nil {
+			return err
+		}
+		if err = db.Save(existing); err != nil {
+			return err
+		}
+		return existing
+	}, nil)
+
+	r.request(http.MethodDelete, "/:id", func(c micro.Ctx, input IdValue) any {
+		db := c.DB()
+		if _, err := db.Delete(model, micro.Query{
+			W:    "id = ?",
+			Args: []interface{}{input.Id},
+		}); err != nil {
+			return err
+		}
+		return input
+	}, nil)
+}
+
 func (r *echoGroupRoute) request(method string, path string, handler interface{}, filters []micro.MiddlewareFunc) {
 
 	if method == "*" {
@@ -563,11 +657,42 @@ func createMiddlewares(filters []micro.MiddlewareFunc) []echo.MiddlewareFunc {
 func createRouteContext(c echo.Context) micro.Ctx {
 	value := c.Get(micro.AuthKey)
 	tenantId := c.Get(micro.TenantId).(string)
+	var result micro.Ctx
 	if value == nil {
-		return micro.NewCtx(tenantId)
+		result = micro.NewCtx(tenantId)
+	} else {
+		auth := value.(*micro.Authentication)
+		result = micro.NewAuthCtx(tenantId, auth)
 	}
-	auth := value.(*micro.Authentication)
-	return micro.NewAuthCtx(tenantId, auth)
+	result.Wrapped = c
+	return result
+}
+
+func validateStruct(v interface{}, action string) error {
+	val := reflect.ValueOf(v).Elem()
+	if val.Kind() != reflect.Struct {
+		return fmt.Errorf("provided value is not a struct")
+	}
+	// Use reflection to loop through the fields
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Type().Field(i)
+		tag := field.Tag.Get("validate")
+
+		shouldValidate := strings.Contains(tag, "required_"+action)
+		// Check if the field has validation tag for the given action
+		if shouldValidate {
+			err := validate.Var(val.Field(i).Interface(), "required")
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+type IdValue struct {
+	Id *string `param:"id" json:"id" validate:"required"`
 }
 
 func init() {

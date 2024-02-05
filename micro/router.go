@@ -29,6 +29,7 @@ type BaseRouter interface {
 	GET(path string, handler interface{}, filters ...MiddlewareFunc)
 	DELETE(path string, handler interface{}, filters ...MiddlewareFunc)
 	Any(path string, handler interface{}, filters ...MiddlewareFunc)
+	Resource(resource string, model interface{})
 }
 
 type JwtCfg struct {
@@ -43,6 +44,7 @@ type RouterConfig struct {
 	MultiTenant      bool
 	//Prometheus       *PrometheusCfg
 	//JwtAuth    bool
+	Production       bool
 	TokenProvider    TokenProvider
 	DisableJwtFilter bool
 	SentryDsn        string

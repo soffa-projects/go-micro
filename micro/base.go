@@ -1,10 +1,14 @@
 package micro
 
 import (
+	"github.com/labstack/echo/v4"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/redis/go-redis/v9"
 	log "github.com/sirupsen/logrus"
 	"github.com/soffa-projects/go-micro/di"
+	"github.com/soffa-projects/go-micro/schema"
+	"net/http"
+	"reflect"
 )
 
 var DefaultTenantId = "public"
@@ -69,6 +73,7 @@ type Ctx struct {
 	TenantId string
 	Auth     *Authentication
 	db       DataSource
+	Wrapped  interface{}
 }
 
 type Env struct {
@@ -121,6 +126,9 @@ func (ctx Ctx) IsAuthenticated() bool {
 	}
 	return ctx.Auth.Authenticated
 }
+func (ctx Ctx) DB() DataSource {
+	return ctx.db
+}
 
 func NewCtx(tenantId string) Ctx {
 	var db DataSource
@@ -164,6 +172,7 @@ func (ctx Ctx) Tx(cb func(tx Ctx) error) error {
 			TenantId: ctx.TenantId,
 			Auth:     ctx.Auth,
 			db:       tx,
+			Wrapped:  ctx.Wrapped,
 		})
 	})
 }
@@ -172,4 +181,28 @@ func (e Env) Close() {
 	for _, db := range e.DB {
 		db.Close()
 	}
+}
+
+func (ctx Ctx) Bind(modelType reflect.Type) (error, any) {
+	if ctx.Wrapped == nil {
+		log.Fatalf("ctx.Wrapped is nil")
+		return nil, nil
+	}
+	entity := reflect.New(modelType).Interface()
+	binder := &echo.DefaultBinder{}
+	echoContext := ctx.Wrapped.(echo.Context)
+	if echoContext == nil {
+		log.Fatalf("ctx.Wrapped is not an echo.Context")
+		return nil, nil
+	}
+	if err := binder.Bind(entity, echoContext); err != nil {
+		return echo.NewHTTPError(
+			http.StatusBadRequest,
+			schema.ErrorResponse{
+				Kind:    "input.binding",
+				Message: "invalid_binding",
+				Errors:  err.Error(),
+			}), nil
+	}
+	return nil, entity
 }
