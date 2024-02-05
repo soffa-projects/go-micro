@@ -98,6 +98,7 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 				//TenantId:      tenantId,
 				IpAddress: ipAddress,
 			}
+			c.Set(micro.TenantId, tenantId)
 			c.Set(micro.AuthKey, auth)
 			return next(c)
 		}
