@@ -313,9 +313,13 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, 
 			return mapHttpResponse(err, c)
 		}
 
+		url := upstream
+		if !h.IsStrEmpty(c.Request().URL.RawQuery) {
+			url = strings.Join([]string{url, c.Request().URL.RawQuery}, "?")
+		}
 		req, _ := http.NewRequest(
 			c.Request().Method,
-			strings.Join([]string{upstream, c.Request().URL.RawQuery}, "?"),
+			url,
 			c.Request().Body,
 		)
 		copyHeader(c.Request().Header, req.Header)
