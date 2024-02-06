@@ -1,8 +1,10 @@
 package tests
 
 import (
+	"fmt"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/soffa-projects/go-micro/micro"
+	"github.com/soffa-projects/go-micro/util/h"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -61,6 +63,48 @@ func HttpTest(t *testing.T, handler http.Handler, teardown func()) HttpExpect {
 			teardown()
 		},
 	}
+}
+
+type CrudTestConfig struct {
+	Bearer      string
+	IdPrefix    string
+	GetListPath string
+	CreateInput h.Map
+	UpdateInput h.Map
+}
+
+func (f *HttpExpect) CRUD(path string, config CrudTestConfig) {
+	// test list
+	f.GET(path).
+		BearerAuth(config.Bearer).Expect().IsOK().
+		JSON().Path(config.GetListPath).Array().IsEmpty()
+
+	modelId := f.POST(path, config.CreateInput).
+		BearerAuth(config.Bearer).Expect().IsOK().
+		JSON().Path("$.id").String().HasPrefix(config.IdPrefix).Raw()
+
+	f.GET(path).
+		BearerAuth(config.Bearer).Expect().IsOK().
+		JSON().Path(config.GetListPath).Array().NotEmpty()
+
+	idPath := fmt.Sprintf("%s/%s", path, modelId)
+
+	if len(config.UpdateInput) > 0 {
+		result := f.PATCH(idPath, config.UpdateInput).
+			BearerAuth(config.Bearer).Expect().IsOK()
+
+		result.JSON().Path("$.id").String().IsEqual(modelId)
+		for k, v := range config.UpdateInput {
+			result.JSON().Path(fmt.Sprintf("$.%s", k)).String().IsEqual(fmt.Sprintf("%v", v))
+		}
+	}
+
+	f.DELETE(idPath).
+		BearerAuth(config.Bearer).Expect().IsOK().JSON().Path("$.id").String().IsEqual(modelId)
+
+	f.GET(path).
+		BearerAuth(config.Bearer).Expect().IsOK().
+		JSON().Path(config.GetListPath).Array().IsEmpty()
 }
 
 func (f *HttpExpect) GET(path string) *HttpRequest {
@@ -135,7 +179,9 @@ func (r *HttpRequest) Header(name string, value string) *HttpRequest {
 }
 
 func (r *HttpRequest) BearerAuth(token string) *HttpRequest {
-	r.authorization = "Bearer " + token
+	if !h.IsStrEmpty(token) {
+		r.authorization = "Bearer " + token
+	}
 	return r
 }
 

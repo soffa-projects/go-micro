@@ -37,7 +37,7 @@ func (c DefaultCache) Get(target interface{}, key string, populate func() (inter
 			if serialized, err := h.ToJsonBytes(data); err == nil {
 				_ = c.internal.Set(key, serialized)
 			}
-			return h.CopyAllFields(target, data)
+			return h.CopyAllFields(target, data, false)
 		}
 		return err
 	}

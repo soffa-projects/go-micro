@@ -5,8 +5,10 @@ import (
 	"reflect"
 )
 
-func CopyAllFields(dst any, src any) error {
-	return copier.Copy(dst, src)
+func CopyAllFields(dst any, src any, ignoreEmpty bool) error {
+	return copier.CopyWithOption(dst, src, copier.Option{
+		IgnoreEmpty: ignoreEmpty,
+	})
 }
 
 func CopyFields(dst any, src any, excludedFields ...string) {

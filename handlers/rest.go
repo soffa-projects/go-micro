@@ -18,14 +18,14 @@ func GetEntityList[T any](c micro.Ctx) schema.EntityList[T] {
 	}
 }
 
-func CreateEntity[T any](c micro.Ctx, input any) T {
+func CreateEntity[T any](c micro.Ctx, input any, entity T) T {
 	db := c.DB()
-	var entity T
-	h.RaiseAny(h.CopyAllFields(&entity, input))
+	//var entity T
+	h.RaiseAny(h.CopyAllFields(&entity, input, true))
 	prefix := h.F(reflections.GetFieldTag(entity, "Id", "prefix"))
 	h.RaiseIf(h.IsStrEmpty(prefix), errors.Technical("entity_missing_id_prefix"))
 	h.RaiseAny(reflections.SetField(&entity, "Id", ids.NewIdPtr(prefix)))
-	h.RaiseAny(db.Create(entity))
+	h.RaiseAny(db.Create(&entity))
 	return entity
 }
 
@@ -38,7 +38,7 @@ func UpdateEntity[T any](c micro.Ctx, input any) T {
 		Args: []any{id},
 	})
 	h.RaiseAny(err)
-	h.RaiseAny(h.CopyAllFields(&entity, input))
+	h.RaiseAny(h.CopyAllFields(&entity, input, true))
 	h.RaiseAny(db.Save(&entity))
 	return entity
 }
