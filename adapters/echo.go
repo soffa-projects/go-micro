@@ -307,7 +307,6 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, 
 			Authorization: authz,
 			Bearer:        bearerAuthz,
 		}
-
 		uctx, err := handler(pctx)
 
 		if err != nil {
@@ -316,7 +315,7 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, 
 
 		req, _ := http.NewRequest(
 			c.Request().Method,
-			upstream,
+			strings.Join([]string{upstream, c.Request().URL.RawQuery}, "?"),
 			c.Request().Body,
 		)
 		copyHeader(c.Request().Header, req.Header)
