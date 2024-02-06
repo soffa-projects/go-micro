@@ -41,6 +41,20 @@ func IsPointer(arg interface{}) bool {
 	return argType.Kind() == reflect.Ptr
 }
 
+func UnwrapStr(arg interface{}) string {
+	if IsPointer(arg) {
+		idValue := reflect.ValueOf(arg)
+		if idValue.IsNil() {
+			// Handle the nil pointer case appropriately
+			return ""
+		} else {
+			return idValue.Elem().Interface().(string)
+		}
+	} else {
+		return arg.(string)
+	}
+}
+
 func ToInt(input string) int {
 	if input == "" {
 		return 0

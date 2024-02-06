@@ -1,0 +1,55 @@
+package handlers
+
+import (
+	"github.com/oleiade/reflections"
+	"github.com/soffa-projects/go-micro/micro"
+	"github.com/soffa-projects/go-micro/schema"
+	"github.com/soffa-projects/go-micro/util/errors"
+	"github.com/soffa-projects/go-micro/util/h"
+	"github.com/soffa-projects/go-micro/util/ids"
+)
+
+func GetEntityList[T any](c micro.Ctx) schema.EntityList[T] {
+	db := c.DB()
+	var data []T
+	h.RaiseAny(db.Find(&data, micro.Query{}))
+	return schema.EntityList[T]{
+		Data: data,
+	}
+}
+
+func CreateEntity[T any](c micro.Ctx, input any) T {
+	db := c.DB()
+	var entity T
+	h.RaiseAny(h.CopyAllFields(&entity, input))
+	prefix := h.F(reflections.GetFieldTag(entity, "Id", "prefix"))
+	h.RaiseIf(h.IsStrEmpty(prefix), errors.Technical("entity_missing_id_prefix"))
+	h.RaiseAny(reflections.SetField(&entity, "Id", ids.NewIdPtr(prefix)))
+	h.RaiseAny(db.Create(entity))
+	return entity
+}
+
+func UpdateEntity[T any](c micro.Ctx, input any) T {
+	db := c.DB()
+	id := h.UnwrapStr(h.F(reflections.GetField(input, "Id")))
+	var entity T
+	err := db.First(&entity, micro.Query{
+		W:    "id = ?",
+		Args: []any{id},
+	})
+	h.RaiseAny(err)
+	h.RaiseAny(h.CopyAllFields(&entity, input))
+	h.RaiseAny(db.Save(&entity))
+	return entity
+}
+
+func DeleteEntity[T any](c micro.Ctx, input schema.IdModel) schema.IdModel {
+	db := c.DB()
+	var entity T
+	_, err := db.Delete(entity, micro.Query{
+		W:    "id = ?",
+		Args: []any{*input.Id},
+	})
+	h.RaiseAny(err)
+	return input
+}

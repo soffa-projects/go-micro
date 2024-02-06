@@ -15,7 +15,6 @@ import (
 	"github.com/soffa-projects/go-micro/schema"
 	"github.com/soffa-projects/go-micro/util/errors"
 	"github.com/soffa-projects/go-micro/util/h"
-	"github.com/soffa-projects/go-micro/util/ids"
 	echoSwagger "github.com/swaggo/echo-swagger"
 	"io"
 	"net/http"
@@ -388,83 +387,12 @@ func (r *echoGroupRoute) Any(path string, handler interface{}, filters ...micro.
 	r.request("*", path, handler, filters)
 }
 
+/*
 func (r *echoGroupRoute) Resource(resource string, model any) {
-	modelType := reflect.TypeOf(model)
-	if modelType.Kind() == reflect.Ptr {
-		// If the model is a pointer, get the type it points to
-		modelType = modelType.Elem()
-	}
-	idField, ok := modelType.FieldByName("Id")
-	if !ok {
-		log.Fatalf("model %s does not have an Id field", modelType.Name())
-	}
-	idPrefix := idField.Tag.Get("prefix")
-	sliceType := reflect.SliceOf(modelType)
-
-	r.request(http.MethodGet, "", func(c micro.Ctx) any {
-		db := c.DB()
-		data := reflect.MakeSlice(sliceType, 0, 0).Interface()
-		if err := db.Find(&data, micro.Query{}); err != nil {
-			return err
-		}
-		return map[string]any{
-			fmt.Sprintf("%s", resource): data,
-		}
-	}, nil)
-
-	r.request(http.MethodPost, "", func(c micro.Ctx) any {
-		err, entity := c.Bind(modelType)
-		if err != nil {
-			return err
-		}
-		if err = validateStruct(entity, "insert"); err != nil {
-			return err
-		}
-		db := c.DB()
-		entityValue := reflect.ValueOf(entity).Elem()
-		idValue := entityValue.FieldByName("Id")
-		if idValue.Type().Kind() == reflect.Ptr {
-			idValue.Set(reflect.ValueOf(ids.NewIdPtr(idPrefix)))
-		} else {
-			idValue.Set(reflect.ValueOf(ids.NewId(idPrefix)))
-		}
-		if err = db.Create(entity); err != nil {
-			return err
-		}
-		return entity
-	}, nil)
 
 	r.request(http.MethodPatch, "/:id", func(c micro.Ctx) any {
 		err, entity := c.Bind(modelType)
-		if err != nil {
-			return err
-		}
-		if err = validateStruct(entity, "update"); err != nil {
-			return err
-		}
-		db := c.DB()
-		entityValue := reflect.ValueOf(entity).Elem()
-		idValue := entityValue.FieldByName("Id")
-		var id string
-		if idValue.Type().Kind() == reflect.Ptr {
-			id = *idValue.Interface().(*string)
-		} else {
-			id = idValue.Interface().(string)
-		}
-		var existing = reflect.New(modelType).Interface()
-		if err = db.Find(existing, micro.Query{
-			W:    "id = ?",
-			Args: []interface{}{id},
-		}); err != nil {
-			return err
-		}
-		if err = h.CopyAllFields(existing, entity); err != nil {
-			return err
-		}
-		if err = db.Save(existing); err != nil {
-			return err
-		}
-		return existing
+		if e
 	}, nil)
 
 	r.request(http.MethodDelete, "/:id", func(c micro.Ctx, input IdValue) any {
@@ -478,6 +406,7 @@ func (r *echoGroupRoute) Resource(resource string, model any) {
 		return input
 	}, nil)
 }
+*/
 
 func (r *echoGroupRoute) request(method string, path string, handler interface{}, filters []micro.MiddlewareFunc) {
 
@@ -692,10 +621,6 @@ func validateStruct(v interface{}, action string) error {
 	}
 
 	return nil
-}
-
-type IdValue struct {
-	Id *string `param:"id" json:"id" validate:"required"`
 }
 
 func init() {

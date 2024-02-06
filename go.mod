@@ -19,6 +19,7 @@ require (
 	github.com/labstack/echo-jwt/v4 v4.2.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/nicksnyder/go-i18n/v2 v2.4.0
+	github.com/oleiade/reflections v1.0.1
 	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/pressly/goose/v3 v3.18.0
 	github.com/redis/go-redis/v9 v9.4.0

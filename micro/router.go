@@ -29,7 +29,7 @@ type BaseRouter interface {
 	GET(path string, handler interface{}, filters ...MiddlewareFunc)
 	DELETE(path string, handler interface{}, filters ...MiddlewareFunc)
 	Any(path string, handler interface{}, filters ...MiddlewareFunc)
-	Resource(resource string, model interface{})
+	//Resource(resource string, model interface{})
 }
 
 type JwtCfg struct {
@@ -93,6 +93,7 @@ func (u *RouterUpstream) Lookup(path string) string {
 	}
 	return ""
 }
+
 func (u *RouterUpstream) All() map[string]string {
 	return u.data
 }
