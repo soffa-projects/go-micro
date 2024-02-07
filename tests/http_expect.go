@@ -83,6 +83,10 @@ func (f *HttpExpect) CRUD(path string, config CrudTestConfig) {
 		BearerAuth(config.Bearer).Expect().IsOK().
 		JSON().Path("$.id").String().HasPrefix(config.IdPrefix).Raw()
 
+	if modelId == "" {
+		f.t.Fatalf("failed to create model %s", path)
+	}
+
 	f.GET(path).
 		BearerAuth(config.Bearer).Expect().IsOK().
 		JSON().Path(config.GetListPath).Array().NotEmpty()

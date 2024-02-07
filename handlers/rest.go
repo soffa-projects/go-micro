@@ -9,10 +9,15 @@ import (
 	"github.com/soffa-projects/go-micro/util/ids"
 )
 
-func GetEntityList[T any](c micro.Ctx) schema.EntityList[T] {
+func GetEntityList[T any](c micro.Ctx, filter ...schema.FilterInput) schema.EntityList[T] {
 	db := c.DB()
 	var data []T
-	h.RaiseAny(db.Find(&data, micro.Query{}))
+	q := micro.Query{}
+	if len(filter) > 0 {
+		q.W = filter[0].Where
+		q.Args = filter[0].Args
+	}
+	h.RaiseAny(db.Find(&data, q))
 	return schema.EntityList[T]{
 		Data: data,
 	}

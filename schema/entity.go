@@ -9,3 +9,11 @@ type EntityList[T any] struct {
 	Page  int `json:"page,omitempty"`
 	Total int `json:"total,omitempty"`
 }
+
+type FilterInput struct {
+	Where string
+	Args  []interface{}
+	Page  string
+	Sort  string
+	Count int
+}
