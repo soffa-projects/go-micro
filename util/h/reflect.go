@@ -8,6 +8,7 @@ import (
 func CopyAllFields(dst any, src any, ignoreEmpty bool) error {
 	return copier.CopyWithOption(dst, src, copier.Option{
 		IgnoreEmpty: ignoreEmpty,
+		DeepCopy:    true,
 	})
 }
 
