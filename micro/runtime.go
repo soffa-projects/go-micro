@@ -25,9 +25,9 @@ type Cfg struct {
 	TablePrefix      string
 	EnableDiscovery  bool
 	DisableRouter    bool
-
 	DisableJwtFilter bool
-	CorsEnabled      bool
+	CorsDisabled     bool
+	SwaggerDisabled  bool
 }
 
 // ----------------------------------------------

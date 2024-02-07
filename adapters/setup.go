@@ -208,13 +208,20 @@ func setupRouter(env *micro.Env, cfg micro.Cfg) {
 	if cfg.DisableRouter {
 		return
 	}
+	corsEnabled := true
+	if cfg.CorsDisabled {
+		corsEnabled = false
+	} else if h.GetEnv("CORS_DISABLED") == "true" {
+		corsEnabled = false
+	}
+
 	router := NewEchoAdapter(
 		micro.RouterConfig{
-			Cors:             cfg.CorsEnabled,
+			Cors:             corsEnabled,
 			SentryDsn:        h.GetEnv("SENTRY_DSN"),
 			RemoveTrailSlash: true,
 			BodyLimit:        "2M",
-			Swagger:          true,
+			Swagger:          !cfg.SwaggerDisabled,
 			Production:       env.Production,
 			TokenProvider:    env.TokenProvider,
 			DisableJwtFilter: cfg.DisableJwtFilter,
