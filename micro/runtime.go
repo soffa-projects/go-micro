@@ -25,13 +25,15 @@ type Cfg struct {
 	TablePrefix      string
 	EnableDiscovery  bool
 	DisableRouter    bool
+
 	DisableJwtFilter bool
+	CorsEnabled      bool
 }
 
 // ----------------------------------------------
 
 func Set(key string, value string) {
-	os.Setenv(key, value)
+	_ = os.Setenv(key, value)
 }
 
 func (app *App) Get(key string) string {

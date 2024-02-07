@@ -210,7 +210,7 @@ func setupRouter(env *micro.Env, cfg micro.Cfg) {
 	}
 	router := NewEchoAdapter(
 		micro.RouterConfig{
-			Cors:             true,
+			Cors:             cfg.CorsEnabled,
 			SentryDsn:        h.GetEnv("SENTRY_DSN"),
 			RemoveTrailSlash: true,
 			BodyLimit:        "2M",
