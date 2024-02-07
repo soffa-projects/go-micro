@@ -1,7 +1,6 @@
 package micro
 
 import (
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"strings"
@@ -70,30 +69,38 @@ type ErrorResponse struct {
 }
 
 type RouterUpstream struct {
-	data map[string]string
+	data map[string]*Upstream
 }
 
-func NewRouterUpstream(data map[string]string) *RouterUpstream {
+type Upstream struct {
+	Id     string
+	Uri    string
+	Prefix string
+}
+
+func NewRouterUpstream(data map[string]*Upstream) *RouterUpstream {
+	for id, up := range data {
+		up.Id = id
+	}
 	return &RouterUpstream{
 		data: data,
 	}
 }
 
-func (u *RouterUpstream) Set(key string, value string) {
-	u.data[key] = value
-	log.Infof("upstream updated: %s --> %s", key, value)
+func (u *RouterUpstream) SetUri(id string, value string) {
+	u.data[id].Uri = value
+	log.Infof("upstream updated: %s --> %s", id, value)
 }
 
-func (u *RouterUpstream) Lookup(path string) string {
-	for p, up := range u.data {
-		if strings.HasPrefix(path, p) {
-			log.Infof("upstream found: %s --> %s", path, up)
-			return fmt.Sprintf("%s%s", up, strings.TrimPrefix(path, p))
+func (u *RouterUpstream) Lookup(path string) *Upstream {
+	for _, up := range u.data {
+		if strings.HasPrefix(path, up.Prefix) {
+			return up
 		}
 	}
-	return ""
+	return nil
 }
 
-func (u *RouterUpstream) All() map[string]string {
+func (u *RouterUpstream) All() map[string]*Upstream {
 	return u.data
 }

@@ -289,8 +289,14 @@ func (r *echoRouterAdapter) Group(path string, filters ...micro.MiddlewareFunc) 
 
 func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, handler micro.ProxyHandlerFunc) {
 	r.e.Any(path, func(c echo.Context) error {
-		upstream := upstreams.Lookup(c.Request().URL.Path)
-		if upstream == "" {
+		uriParts := strings.Split(c.Request().URL.Path, "?")
+		requestUri := uriParts[0]
+		requestQuery := ""
+		if len(uriParts) > 1 {
+			requestQuery = uriParts[1]
+		}
+		upstream := upstreams.Lookup(requestUri)
+		if upstream == nil {
 			return echo.NewHTTPError(http.StatusNotFound, "no_upstream_found")
 		}
 		ctx := createRouteContext(c)
@@ -301,8 +307,8 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, 
 		}
 		pctx := micro.ProxyCtx{
 			Ctx:           ctx,
-			UpstreamId:    strings.TrimPrefix(path, "/"),
-			UpstreamUrl:   upstream,
+			UpstreamId:    upstream.Id,
+			UpstreamUrl:   upstream.Uri,
 			Authorization: authz,
 			Bearer:        bearerAuthz,
 		}
@@ -312,9 +318,9 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, 
 			return mapHttpResponse(err, c)
 		}
 
-		url := upstream
-		if !h.IsStrEmpty(c.Request().URL.RawQuery) {
-			url = strings.Join([]string{url, c.Request().URL.RawQuery}, "?")
+		url := upstream.Uri //, "/") + "/" + c.Request().URL.Path
+		if requestQuery != "" {
+			url = strings.Join([]string{url, requestQuery}, "?")
 		}
 		req, _ := http.NewRequest(
 			c.Request().Method,
