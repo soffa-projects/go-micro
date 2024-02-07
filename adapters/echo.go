@@ -313,7 +313,7 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, 
 			Authorization: authz,
 			Bearer:        bearerAuthz,
 		}
-		uctx, err := handler(pctx)
+		err := handler(&pctx)
 
 		if err != nil {
 			return mapHttpResponse(err, c)
@@ -330,8 +330,8 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, 
 		)
 		copyHeader(c.Request().Header, req.Header)
 
-		if uctx != nil && uctx.Authorization != "" {
-			req.Header.Set("Authorization", uctx.Authorization)
+		if pctx.Authorization != "" {
+			req.Header.Set("Authorization", pctx.Authorization)
 		}
 
 		resp, err := http.DefaultClient.Do(req)

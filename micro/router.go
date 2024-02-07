@@ -56,7 +56,7 @@ type RouteFilter func(handler HandlerFunc) HandlerFunc
 
 type HandlerFunc func(c Ctx) (any, error)
 
-type ProxyHandlerFunc func(c ProxyCtx) (*UpstreamCtx, error)
+type ProxyHandlerFunc func(c *ProxyCtx) error
 
 type UpstreamCtx struct {
 	Authorization string
