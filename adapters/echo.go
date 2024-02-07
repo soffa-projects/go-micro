@@ -18,6 +18,7 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 	"io"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strings"
 )
@@ -318,13 +319,13 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, 
 			return mapHttpResponse(err, c)
 		}
 
-		url := upstream.Uri //, "/") + "/" + c.Request().URL.Path
+		chain := h.F(url.JoinPath(upstream.Uri, strings.TrimPrefix(requestUri, upstream.Prefix)))
 		if requestQuery != "" {
-			url = strings.Join([]string{url, requestQuery}, "?")
+			chain = strings.Join([]string{chain, requestQuery}, "?")
 		}
 		req, _ := http.NewRequest(
 			c.Request().Method,
-			url,
+			chain,
 			c.Request().Body,
 		)
 		copyHeader(c.Request().Header, req.Header)
