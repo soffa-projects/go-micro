@@ -17,17 +17,18 @@ import (
 type Cfg struct {
 	//Name            string
 	//Version         string
-	Features         []Feature
-	FS               embed.FS
-	DefaultLocale    string
-	AvailableLocales []string
-	MultiTenant      bool
-	TablePrefix      string
-	EnableDiscovery  bool
-	DisableRouter    bool
-	DisableJwtFilter bool
-	CorsDisabled     bool
-	SwaggerDisabled  bool
+	Features                   []Feature
+	FS                         embed.FS
+	DefaultLocale              string
+	AvailableLocales           []string
+	MultiTenant                bool
+	TablePrefix                string
+	EnableDiscovery            bool
+	DisableRouter              bool
+	DisableJwtFilter           bool
+	CorsDisabled               bool
+	SwaggerDisabled            bool
+	DisableImplicitTransaction bool
 }
 
 // ----------------------------------------------

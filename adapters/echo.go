@@ -84,6 +84,9 @@ func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			c.Set(micro.EnvKey, env)
+			if config.DisableImplicitTransaction {
+				c.Set(micro.DisableImplicitTransaction, "1")
+			}
 			tenantId := c.Request().Header.Get(micro.TenantIdHttpHeader)
 			if tenantId == "" {
 				tenantId = micro.DefaultTenantId
@@ -462,8 +465,6 @@ func (r *echoGroupRoute) request(method string, path string, handler interface{}
 
 //goland:noinspection GoTypeAssertionOnErrors
 func handleRequest(c echo.Context, handler interface{}) (err error) {
-	var result interface{}
-
 	handlerType := reflect.TypeOf(handler)
 
 	if handlerType.Kind() != reflect.Func {
@@ -492,43 +493,56 @@ func handleRequest(c echo.Context, handler interface{}) (err error) {
 		log.Debugf("current tenant_id is %s", tenantId)
 	}
 
+	disabledTx := c.Get(micro.DisableImplicitTransaction)
+	if disabledTx == "1" {
+		return invokeHandler(c, ctx, handler, handlerType, numIn)
+	}
 	return ctx.Tx(func(tx micro.Ctx) error {
-
-		args := []reflect.Value{reflect.ValueOf(tx)}
-
-		if numIn == 2 {
-			inputType := handlerType.In(1)
-			inputValue := reflect.New(inputType).Elem()
-			modelInput := inputValue.Addr().Interface() //
-			if err = Bind(c, modelInput); err != nil {
-				log.Errorf("validation failed for %s\n%v", c.Request().RequestURI, err.Error())
-				return err
-			}
-			args = append(args, inputValue)
-		}
-
-		handlerValue := reflect.ValueOf(handler)
-
-		res := handlerValue.Call(args)
-
-		if len(res) == 1 {
-			result = res[0].Interface()
-		} else if len(res) == 2 {
-			if res[1].IsNil() {
-				result = res[0].Interface()
-			} else {
-				return res[1].Interface().(error)
-			}
-		} else {
-			return fmt.Errorf("invalid handler return type")
-		}
-
-		if err != nil {
-			log.Errorf("Error while handling request %s -- %v", c.Request().RequestURI, err.Error())
-			return mapHttpResponse(err, c)
-		}
-		return c.JSON(http.StatusOK, result)
+		return invokeHandler(c, ctx, handler, handlerType, numIn)
 	})
+}
+
+func invokeHandler(c echo.Context, tx micro.Ctx, handler interface{}, handlerType reflect.Type, numIn int) error {
+	args := []reflect.Value{reflect.ValueOf(tx)}
+
+	if numIn == 2 {
+		inputType := handlerType.In(1)
+		inputValue := reflect.New(inputType).Elem()
+		modelInput := inputValue.Addr().Interface() //
+		if err := Bind(c, modelInput); err != nil {
+			log.Errorf("validation failed for %s\n%v", c.Request().RequestURI, err.Error())
+			return err
+		}
+		args = append(args, inputValue)
+	}
+
+	handlerValue := reflect.ValueOf(handler)
+
+	res := handlerValue.Call(args)
+
+	var result interface{}
+
+	if len(res) == 1 {
+		result = res[0].Interface()
+	} else if len(res) == 2 {
+		if res[1].IsNil() {
+			result = res[0].Interface()
+		} else {
+			return res[1].Interface().(error)
+		}
+	} else {
+		return fmt.Errorf("invalid handler return type")
+	}
+
+	if err, ok := result.(error); ok {
+		return err
+	}
+
+	if result == nil {
+		return nil
+	}
+
+	return c.JSON(http.StatusOK, result)
 }
 
 func mapHttpResponse(err error, c echo.Context) error {

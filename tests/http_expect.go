@@ -50,6 +50,10 @@ type StringExpect struct {
 	value *httpexpect.String
 }
 
+type BooleanExpect struct {
+	value *httpexpect.Boolean
+}
+
 type ObjectExpect struct {
 	value *httpexpect.Object
 }
@@ -293,6 +297,12 @@ func (v *ValueExpect) String() *StringExpect {
 	}
 }
 
+func (v *ValueExpect) Boolean() *BooleanExpect {
+	return &BooleanExpect{
+		value: v.value.Boolean(),
+	}
+}
+
 func (v *ValueExpect) Number() *NumberExect {
 	return &NumberExect{
 		value: v.value.Number(),
@@ -301,6 +311,16 @@ func (v *ValueExpect) Number() *NumberExect {
 
 func (v *StringExpect) Raw() string {
 	return v.value.Raw()
+}
+
+func (v *BooleanExpect) IsTrue() *BooleanExpect {
+	v.value.IsTrue()
+	return v
+}
+
+func (v *BooleanExpect) IsFalse() *BooleanExpect {
+	v.value.IsFalse()
+	return v
 }
 
 func (v *ArrayExpect) IsEmpty() *ArrayExpect {

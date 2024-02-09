@@ -1,11 +1,9 @@
 package adapters
 
 import (
-	"github.com/jackc/pgx/v4"
-	_ "github.com/jackc/pgx/v4"
+	_ "github.com/jackc/pgx/v5"
 	"github.com/pressly/goose/v3"
 	"github.com/soffa-projects/go-micro/micro"
-	"golang.org/x/net/context"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -24,11 +22,6 @@ type adapter struct {
 	tenantId string
 	url      string
 	//config  *micro.DataSourceCfg
-}
-
-func (a adapter) Conn() *pgx.Conn {
-	pgxConn, _ := pgx.Connect(context.Background(), a.url)
-	return pgxConn
 }
 
 func (a adapter) IsPostgres() bool {
@@ -58,6 +51,11 @@ func (a adapter) Find(target any, q micro.Query) error {
 	return res.Error
 }
 
+func (a adapter) FindAll(target any) error {
+	res := a.buildQuery(target, micro.Query{}).Find(target)
+	return res.Error
+}
+
 func (a adapter) First(model any, q micro.Query) error {
 	res := a.buildQuery(model, q).First(model)
 	if res.Error == gorm.ErrRecordNotFound {
@@ -81,7 +79,12 @@ func (a adapter) Delete(model any, q micro.Query) (int64, error) {
 }
 
 func (a adapter) Execute(model any, q micro.Query) (int64, error) {
-	res := a.internal.Raw(q.Raw, q.Args...).Scan(model)
+	res := a.internal.Raw(q.Raw).Scan(model)
+	return res.RowsAffected, res.Error
+}
+
+func (a adapter) Raw(q micro.Query) (int64, error) {
+	res := a.internal.Exec(q.Raw, q.Args...)
 	return res.RowsAffected, res.Error
 }
 
@@ -123,6 +126,7 @@ func (a adapter) Transaction(cb func(tx micro.DataSource) error) error {
 	return a.internal.Transaction(func(tx *gorm.DB) error {
 		return cb(&adapter{
 			internal: tx,
+			url:      a.url,
 			tenantId: a.tenantId,
 		})
 	})

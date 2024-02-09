@@ -228,15 +228,16 @@ func setupRouter(env *micro.Env, cfg micro.Cfg) micro.Router {
 	return NewEchoAdapter(
 		env,
 		micro.RouterConfig{
-			Cors:             corsEnabled,
-			SentryDsn:        h.GetEnv("SENTRY_DSN"),
-			RemoveTrailSlash: true,
-			BodyLimit:        "2M",
-			Swagger:          !cfg.SwaggerDisabled,
-			Production:       env.Production,
-			TokenProvider:    env.TokenProvider,
-			DisableJwtFilter: cfg.DisableJwtFilter,
-			MultiTenant:      cfg.MultiTenant,
+			Cors:                       corsEnabled,
+			SentryDsn:                  h.GetEnv("SENTRY_DSN"),
+			RemoveTrailSlash:           true,
+			DisableImplicitTransaction: cfg.DisableImplicitTransaction,
+			BodyLimit:                  "2M",
+			Swagger:                    !cfg.SwaggerDisabled,
+			Production:                 env.Production,
+			TokenProvider:              env.TokenProvider,
+			DisableJwtFilter:           cfg.DisableJwtFilter,
+			MultiTenant:                cfg.MultiTenant,
 		})
 
 }

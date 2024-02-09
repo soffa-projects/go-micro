@@ -12,6 +12,7 @@ import (
 const AuthKey = "user"
 const TenantId = "tenant"
 const EnvKey = "env"
+const DisableImplicitTransaction = "implicit_transaction_disabled"
 
 type Router interface {
 	BaseRouter
@@ -38,11 +39,12 @@ type JwtCfg struct {
 }
 
 type RouterConfig struct {
-	Cors             bool
-	RemoveTrailSlash bool
-	BodyLimit        string
-	Swagger          bool
-	MultiTenant      bool
+	Cors                       bool
+	RemoveTrailSlash           bool
+	DisableImplicitTransaction bool
+	BodyLimit                  string
+	Swagger                    bool
+	MultiTenant                bool
 	//Prometheus       *PrometheusCfg
 	//JwtAuth    bool
 	Production       bool

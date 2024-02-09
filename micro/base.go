@@ -125,6 +125,10 @@ func (ctx Ctx) IsDefaultTenant() bool {
 	return ctx.TenantId == DefaultTenantId
 }
 
+func (ctx Ctx) TenantDB() DataSource {
+	return ctx.db
+}
+
 func (ctx Ctx) IsAuthenticated() bool {
 	if ctx.Auth == nil {
 		return false

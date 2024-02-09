@@ -1,7 +1,6 @@
 package micro
 
 import (
-	"github.com/jackc/pgx/v4"
 	"github.com/soffa-projects/go-micro/util/errors"
 	"io/fs"
 )
@@ -20,7 +19,6 @@ type DataSourceMigrations interface {
 }
 
 type DataSource interface {
-	Conn() *pgx.Conn
 	IsPostgres() bool
 	Tenant() string
 	DataSourceMigrations
@@ -33,8 +31,10 @@ type DataSource interface {
 	Exists(any, Query) (bool, error)
 	First(any, Query) error
 	Find(any, Query) error
+	FindAll(any) error
 	Count(any, Query) (int64, error)
 	Execute(any, Query) (int64, error)
+	Raw(Query) (int64, error)
 	Patch(model any, id string, data map[string]interface{}) (int64, error)
 }
 
