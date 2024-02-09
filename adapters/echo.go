@@ -7,6 +7,7 @@ import (
 	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -288,7 +289,7 @@ func (r *echoRouterAdapter) request(method string, path string, handler interfac
 	r.e.Match([]string{method}, path, func(c echo.Context) (err error) {
 		defer func() {
 			if err0 := recover(); err0 != nil {
-				err = mapHttpResponse(err0.(error), c)
+				err = mapHttpResponse(c, err0.(error))
 			}
 		}()
 		return handleRequest(c, handler)
@@ -355,7 +356,7 @@ func (r *echoRouterAdapter) Use(filter micro.MiddlewareFunc) {
 	r.e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if err := filter(createRouteContext(c)); err != nil {
-				return mapHttpResponse(err, c)
+				return mapHttpResponse(c, err)
 			}
 			return next(c)
 		}
@@ -432,14 +433,10 @@ func (r *echoGroupRoute) request(method string, path string, handler interface{}
 			defer func() {
 				if err0 := recover(); err0 != nil {
 					log.Error(err0)
-					err = mapHttpResponse(err0.(error), c)
+					err = mapHttpResponse(c, err0.(error))
 				}
 			}()
-			if err0 := handleRequest(c, handler); err0 != nil {
-				return mapHttpResponse(err0, c)
-			}
-			return nil
-
+			return mapHttpResponse(c, handleRequest(c, handler))
 		}, createMiddlewares(filters)...)
 		return
 	}
@@ -448,13 +445,10 @@ func (r *echoGroupRoute) request(method string, path string, handler interface{}
 		defer func() {
 			if err0 := recover(); err0 != nil {
 				log.Error(err0)
-				err = mapHttpResponse(err0.(error), c)
+				err = mapHttpResponse(c, err0.(error))
 			}
 		}()
-		if err0 := handleRequest(c, handler); err0 != nil {
-			return mapHttpResponse(err0, c)
-		}
-		return nil
+		return mapHttpResponse(c, handleRequest(c, handler))
 
 	}, createMiddlewares(filters)...)
 }
@@ -468,15 +462,15 @@ func handleRequest(c echo.Context, handler interface{}) (err error) {
 	handlerType := reflect.TypeOf(handler)
 
 	if handlerType.Kind() != reflect.Func {
-		return mapHttpResponse(fmt.Errorf("controller method is not a function"), c)
+		return mapHttpResponse(c, fmt.Errorf("controller method is not a function"))
 	}
 
 	numIn := handlerType.NumIn()
 	if numIn == 0 {
-		return mapHttpResponse(fmt.Errorf("controller method must have at least one argument (micro.Ctx)"), c)
+		return mapHttpResponse(c, fmt.Errorf("controller method must have at least one argument (micro.Ctx)"))
 	}
 	if numIn > 2 {
-		return mapHttpResponse(fmt.Errorf("controller method must have at most two arguments (micro.Ctx, input binding)"), c)
+		return mapHttpResponse(c, fmt.Errorf("controller method must have at most two arguments (micro.Ctx, input binding)"))
 	}
 
 	firstArgType := handlerType.In(0)
@@ -495,10 +489,10 @@ func handleRequest(c echo.Context, handler interface{}) (err error) {
 
 	disabledTx := c.Get(micro.DisableImplicitTransaction)
 	if disabledTx == "1" {
-		return invokeHandler(c, ctx, handler, handlerType, numIn)
+		return mapHttpResponse(c, invokeHandler(c, ctx, handler, handlerType, numIn))
 	}
 	return ctx.Tx(func(tx micro.Ctx) error {
-		return invokeHandler(c, ctx, handler, handlerType, numIn)
+		return mapHttpResponse(c, invokeHandler(c, ctx, handler, handlerType, numIn))
 	})
 }
 
@@ -520,79 +514,89 @@ func invokeHandler(c echo.Context, tx micro.Ctx, handler interface{}, handlerTyp
 
 	res := handlerValue.Call(args)
 
-	var result interface{}
-
-	if len(res) == 1 {
-		result = res[0].Interface()
-	} else if len(res) == 2 {
-		if res[1].IsNil() {
-			result = res[0].Interface()
-		} else {
-			return res[1].Interface().(error)
-		}
-	} else {
+	if len(res) > 2 {
 		return fmt.Errorf("invalid handler return type")
 	}
 
-	if err, ok := result.(error); ok {
-		return err
-	}
+	var result interface{}
 
+	for _, r := range res {
+		if err, ok := r.Interface().(error); ok {
+			return err
+		} else if result == nil {
+			result = r.Interface()
+		}
+	}
 	if result == nil {
 		return nil
 	}
-
 	return c.JSON(http.StatusOK, result)
 }
 
-func mapHttpResponse(err error, c echo.Context) error {
+func mapHttpResponse(c echo.Context, err error) error {
+	if err == nil {
+		return nil
+	}
 	log.Errorf("error while handling request %s -- %v", c.Request().RequestURI, err.Error())
-	if e, ok := err.(*errors.FunctionalError); ok {
+
+	switch e := err.(type) {
+	case *errors.FunctionalError:
 		return c.JSON(http.StatusBadRequest, micro.ErrorResponse{
 			Kind:    e.Kind,
 			Error:   e.Message,
 			Details: e.Details,
 		})
-	}
-	if e, ok := err.(*errors.TechnicalError); ok {
+	case *errors.TechnicalError:
 		return c.JSON(http.StatusInternalServerError, micro.ErrorResponse{
 			Kind:    e.Kind,
 			Error:   e.Message,
 			Details: e.Details,
 		})
-	}
-	if e, ok := err.(*errors.ForbiddenError); ok {
+	case *errors.ForbiddenError:
 		return c.JSON(http.StatusForbidden, micro.ErrorResponse{
 			Kind:    e.Kind,
 			Error:   e.Message,
 			Details: e.Details,
 		})
-	}
-	if e, ok := err.(*errors.UnauthorizedError); ok {
+	case *errors.UnauthorizedError:
 		return c.JSON(http.StatusUnauthorized, micro.ErrorResponse{
 			Kind:    e.Kind,
 			Error:   e.Message,
 			Details: e.Details,
 		})
-	}
-	if e, ok := err.(*errors.ResourceNotFoundError); ok {
+	case *errors.ResourceNotFoundError:
 		return c.JSON(http.StatusNotFound, micro.ErrorResponse{
 			Kind:    e.Kind,
 			Error:   e.Message,
 			Details: e.Details,
 		})
-	}
-	if e, ok := err.(*errors.ConflictError); ok {
+	case *errors.ConflictError:
 		return c.JSON(http.StatusConflict, micro.ErrorResponse{
 			Kind:    e.Kind,
 			Error:   e.Message,
 			Details: e.Details,
 		})
+	case *echo.HTTPError:
+		return c.JSON(e.Code, e.Message)
+
+	case *pgconn.PgError:
+		if e.Code == "23505" {
+			return c.JSON(http.StatusConflict, micro.ErrorResponse{
+				Kind:  "db_error",
+				Error: e.Message,
+			})
+		}
+		return c.JSON(http.StatusInternalServerError, micro.ErrorResponse{
+			Kind:  "db_error",
+			Error: e.Message,
+		})
+	default:
+		return c.JSON(http.StatusInternalServerError, micro.ErrorResponse{
+			Kind:  "unknown_error",
+			Error: err.Error(),
+		})
 	}
-	if httpErr, ok := err.(*echo.HTTPError); ok {
-		return c.JSON(httpErr.Code, httpErr.Message)
-	}
-	return err
+
 }
 
 // =================================================================================
@@ -605,7 +609,7 @@ func createMiddlewares(filters []micro.MiddlewareFunc) []echo.MiddlewareFunc {
 		middlewares = append(middlewares, func(next echo.HandlerFunc) echo.HandlerFunc {
 			return func(c echo.Context) error {
 				if err := filter(createRouteContext(c)); err != nil {
-					return mapHttpResponse(err, c)
+					return mapHttpResponse(c, err)
 				}
 				return next(c)
 			}
