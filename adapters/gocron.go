@@ -13,12 +13,14 @@ type GoCronSchedulingAdapter struct {
 	internal     *gocron.Scheduler
 	tenantLoader micro.TenantLoader
 	empty        bool
+	env          *micro.Env
 }
 
-func NewGoCronAdapter(tenantLoader micro.TenantLoader) micro.Scheduler {
+func NewGoCronAdapter(env *micro.Env, tenantLoader micro.TenantLoader) micro.Scheduler {
 	s := gocron.NewScheduler(time.UTC)
 	return &GoCronSchedulingAdapter{
 		internal:     s,
+		env:          env,
 		tenantLoader: tenantLoader,
 		empty:        true,
 	}
@@ -56,7 +58,7 @@ func (s *GoCronSchedulingAdapter) schedule(interval string, limit int, handler f
 			}
 		}()
 		if tenants == nil || len(tenants) == 0 {
-			err := handler(micro.NewCtx(micro.DefaultTenantId))
+			err := handler(micro.NewCtx(s.env, micro.DefaultTenantId))
 			if err != nil {
 				log.Error(err)
 			}
@@ -64,7 +66,7 @@ func (s *GoCronSchedulingAdapter) schedule(interval string, limit int, handler f
 
 		} else {
 			for _, tenantId := range tenants {
-				err := handler(micro.NewCtx(tenantId))
+				err := handler(micro.NewCtx(s.env, tenantId))
 				if err != nil {
 					log.Error(err)
 				}

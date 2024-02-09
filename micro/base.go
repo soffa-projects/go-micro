@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/soffa-projects/go-micro/di"
 	"github.com/soffa-projects/go-micro/schema"
+	"github.com/soffa-projects/go-micro/util/h"
 	"net/http"
 	"reflect"
 )
@@ -26,16 +27,19 @@ type App struct {
 	Version           string
 	Env               *Env
 	ShutdownListeners []func()
+	Router            Router
 }
 
 type AuthToken struct {
-	Issuer   string `json:"token"`
+	Token    string `json:"token"`
+	Issuer   string `json:"issuer"`
 	Audience string `json:"audience"`
 }
 
 type Authentication struct {
-	Token         *AuthToken
 	Authenticated bool
+	Authorization string
+	Bearer        string
 	Name          string
 	Email         string
 	UserId        string
@@ -72,18 +76,19 @@ type ProxyCtx struct {
 type Ctx struct {
 	TenantId string
 	Auth     *Authentication
+	Env      *Env
 	db       DataSource
 	Wrapped  interface{}
 }
 
 type Env struct {
 	Ctx
-	Conf                interface{}
-	AppName             string
-	AppVersion          string
-	DB                  map[string]DataSource
-	ServerPort          int
-	Router              Router
+	Conf        interface{}
+	AppName     string
+	AppVersion  string
+	DataSources map[string]DataSource
+	ServerPort  int
+	//
 	Scheduler           Scheduler
 	TokenProvider       TokenProvider
 	Notifier            NotificationService
@@ -126,31 +131,49 @@ func (ctx Ctx) IsAuthenticated() bool {
 	}
 	return ctx.Auth.Authenticated
 }
-func (ctx Ctx) DB() DataSource {
-	return ctx.db
+
+func (ctx Ctx) SetAuthorization(auth Authentication, tenant string) error {
+	ctx.Auth = &Authentication{}
+	if err := h.CopyAllFields(ctx.Auth, auth, true); err != nil {
+		return err
+	}
+	e := ctx.Wrapped.(echo.Context)
+	if tenant != "" {
+		e.Set(TenantId, tenant)
+	}
+	e.Set(AuthKey, ctx.Auth)
+	return nil
 }
 
-func NewCtx(tenantId string) Ctx {
+func (e Env) SharedDB() DataSource {
+	return e.DataSources[DefaultTenantId]
+}
+
+func NewCtx(env *Env, tenantId string) Ctx {
 	var db DataSource
-	if db == nil && globalEnv != nil && globalEnv.DB != nil {
-		db = globalEnv.DB[tenantId]
+	if db == nil && env != nil && env.DataSources != nil {
+		db = env.DataSources[tenantId]
 	}
 	return Ctx{
 		TenantId: tenantId,
 		db:       db,
+		Env:      env,
 	}
 }
 
-func (e Env) DefaultDB() DataSource {
-	db := e.DB[DefaultTenantId]
-	return db
-}
+/*func (e Env) DefaultDB() DataSource {
+	if db, ok := e.DB[DefaultTenantId]; ok {
+		return db
+	}
+	log.Fatalf("no default db found, missing tenant :%s", DefaultTenantId)
+	return nil
+}*/
 
-func NewAuthCtx(tenantId string, auth *Authentication) Ctx {
+func NewAuthCtx(env *Env, tenantId string, auth *Authentication) Ctx {
 	if auth == nil {
-		return NewCtx(DefaultTenantId)
+		return NewCtx(env, DefaultTenantId)
 	}
-	ctx := NewCtx(tenantId)
+	ctx := NewCtx(env, tenantId)
 	ctx.Auth = auth
 	return ctx
 }
@@ -158,13 +181,15 @@ func NewAuthCtx(tenantId string, auth *Authentication) Ctx {
 func (ctx Ctx) Tx(cb func(tx Ctx) error) error {
 	db := ctx.db
 	if db == nil {
-		db = globalEnv.DB[ctx.TenantId]
+		db = ctx.Env.DataSources[ctx.TenantId]
 	}
 	if db == nil {
 		log.Warn("no db found in current context (skipping global transaction)")
 		return cb(Ctx{
 			TenantId: ctx.TenantId,
 			Auth:     ctx.Auth,
+			Env:      ctx.Env,
+			Wrapped:  ctx.Wrapped,
 		})
 	}
 	return db.Transaction(func(tx DataSource) error {
@@ -172,13 +197,14 @@ func (ctx Ctx) Tx(cb func(tx Ctx) error) error {
 			TenantId: ctx.TenantId,
 			Auth:     ctx.Auth,
 			db:       tx,
+			Env:      ctx.Env,
 			Wrapped:  ctx.Wrapped,
 		})
 	})
 }
 
 func (e Env) Close() {
-	for _, db := range e.DB {
+	for _, db := range e.DataSources {
 		db.Close()
 	}
 }

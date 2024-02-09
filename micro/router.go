@@ -11,6 +11,7 @@ import (
 //goland:noinspection GoUnusedConst
 const AuthKey = "user"
 const TenantId = "tenant"
+const EnvKey = "env"
 
 type Router interface {
 	BaseRouter
@@ -18,16 +19,17 @@ type Router interface {
 	Start(addr string) error
 	Shutdown() error
 	Group(path string, filters ...MiddlewareFunc) BaseRouter
-	Proxy(path string, upstreams *RouterUpstream, handler ProxyHandlerFunc)
+	Use(filter MiddlewareFunc)
+	Proxy(path string, upstreams *RouterUpstream)
 }
 
 type BaseRouter interface {
-	POST(path string, handler interface{}, filters ...MiddlewareFunc)
-	PUT(path string, handler interface{}, filters ...MiddlewareFunc)
-	PATCH(path string, handler interface{}, filters ...MiddlewareFunc)
-	GET(path string, handler interface{}, filters ...MiddlewareFunc)
-	DELETE(path string, handler interface{}, filters ...MiddlewareFunc)
-	Any(path string, handler interface{}, filters ...MiddlewareFunc)
+	POST(path string, handler any, filters ...MiddlewareFunc)
+	PUT(path string, handler any, filters ...MiddlewareFunc)
+	PATCH(path string, handler any, filters ...MiddlewareFunc)
+	GET(path string, handler any, filters ...MiddlewareFunc)
+	DELETE(path string, handler any, filters ...MiddlewareFunc)
+	Any(path string, handler any, filters ...MiddlewareFunc)
 	//Resource(resource string, model interface{})
 }
 

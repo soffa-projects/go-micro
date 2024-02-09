@@ -37,15 +37,18 @@ func NewApp(name string, version string, cfg micro.Cfg) *micro.App {
 	setupNotifications(env)
 	setupTokenProvider(env)
 	setupRedis(env, cfg)
-	setupRouter(env, cfg)
+	router := setupRouter(env, cfg)
 
 	// configure locales if any
-	return &micro.App{
+	app := &micro.App{
 		Name:              name,
 		Version:           version,
 		Env:               env,
 		ShutdownListeners: []func(){},
+		Router:            router,
 	}
+
+	return app
 
 }
 
@@ -105,12 +108,16 @@ func setupDatabase(env *micro.Env, cfg micro.Cfg) {
 	}
 	tenants := env.TenantLoader.GetTenant()
 	links := map[string]micro.DataSource{}
-	env.DB = links
+	env.DataSources = links
 
 	migrationsTable := cfg.TablePrefix + micro.DefaultMigrationsTable
+	tenants = append(tenants, micro.DefaultTenantId)
 
 	if cfg.MultiTenant {
 		for _, tenant := range tenants {
+			if _, ok := links[tenant]; ok {
+				continue
+			}
 			links[tenant] = NewGormAdapter(databaseUrl, tenant)
 			if tenant == micro.DefaultTenantId {
 				links[tenant].Migrate(migrationsFS, "shared", migrationsTable)
@@ -120,6 +127,9 @@ func setupDatabase(env *micro.Env, cfg micro.Cfg) {
 		}
 	} else {
 		for _, tenant := range tenants {
+			if _, ok := links[tenant]; ok {
+				continue
+			}
 			links[tenant] = NewGormAdapter(databaseUrl, tenant)
 			links[tenant].Migrate(migrationsFS, ".", migrationsTable)
 		}
@@ -128,7 +138,7 @@ func setupDatabase(env *micro.Env, cfg micro.Cfg) {
 }
 
 func setupScheduler(env *micro.Env) {
-	env.Scheduler = NewGoCronAdapter(env.TenantLoader)
+	env.Scheduler = NewGoCronAdapter(env, env.TenantLoader)
 }
 
 func setupMailer(env *micro.Env) {
@@ -203,10 +213,10 @@ func setupRedis(env *micro.Env, cfg micro.Cfg) {
 	}
 }
 
-func setupRouter(env *micro.Env, cfg micro.Cfg) {
+func setupRouter(env *micro.Env, cfg micro.Cfg) micro.Router {
 
 	if cfg.DisableRouter {
-		return
+		return nil
 	}
 	corsEnabled := true
 	if cfg.CorsDisabled {
@@ -215,7 +225,8 @@ func setupRouter(env *micro.Env, cfg micro.Cfg) {
 		corsEnabled = false
 	}
 
-	router := NewEchoAdapter(
+	return NewEchoAdapter(
+		env,
 		micro.RouterConfig{
 			Cors:             corsEnabled,
 			SentryDsn:        h.GetEnv("SENTRY_DSN"),
@@ -227,5 +238,5 @@ func setupRouter(env *micro.Env, cfg micro.Cfg) {
 			DisableJwtFilter: cfg.DisableJwtFilter,
 			MultiTenant:      cfg.MultiTenant,
 		})
-	env.Router = router
+
 }

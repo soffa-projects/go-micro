@@ -8,7 +8,7 @@ import (
 )
 
 type TokenProvider interface {
-	CreateToken(subject string, issuer string, audience string, claims map[string]string, ttl *time.Duration) (string, error)
+	CreateToken(subject string, issuer string, audience string, claims map[string]string, ttl time.Duration) (string, error)
 	SigningKey() string
 }
 
@@ -25,7 +25,7 @@ func (p *DefaultTokenProvider) SigningKey() string {
 	return p.secret
 }
 
-func (p *DefaultTokenProvider) CreateToken(subject string, issuer string, audience string, clms map[string]string, ttl *time.Duration) (string, error) {
+func (p *DefaultTokenProvider) CreateToken(subject string, issuer string, audience string, clms map[string]string, ttl time.Duration) (string, error) {
 	if p.kind == "jwt" {
 		claims := jwt.MapClaims{}
 		claims["sub"] = subject
@@ -36,8 +36,8 @@ func (p *DefaultTokenProvider) CreateToken(subject string, issuer string, audien
 			claims["iss"] = issuer
 		}
 		claims["iat"] = dates.Now().Unix()
-		if ttl != nil {
-			claims["exp"] = dates.Now().Add(*ttl).Unix()
+		if ttl != time.Duration(0) {
+			claims["exp"] = dates.Now().Add(ttl).Unix()
 		}
 		if clms != nil {
 			for k, v := range clms {

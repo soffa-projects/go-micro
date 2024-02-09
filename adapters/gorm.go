@@ -1,9 +1,11 @@
 package adapters
 
 import (
-	_ "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v4"
+	_ "github.com/jackc/pgx/v4"
 	"github.com/pressly/goose/v3"
 	"github.com/soffa-projects/go-micro/micro"
+	"golang.org/x/net/context"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -19,7 +21,22 @@ type adapter struct {
 	micro.DataSource
 	//tenants map[string]*gorm.DB
 	internal *gorm.DB
+	tenantId string
+	url      string
 	//config  *micro.DataSourceCfg
+}
+
+func (a adapter) Conn() *pgx.Conn {
+	pgxConn, _ := pgx.Connect(context.Background(), a.url)
+	return pgxConn
+}
+
+func (a adapter) IsPostgres() bool {
+	return strings.HasPrefix(a.url, "postgres")
+}
+
+func (a adapter) Tenant() string {
+	return a.tenantId
 }
 
 func (a adapter) Create(model interface{}) error {
@@ -106,6 +123,7 @@ func (a adapter) Transaction(cb func(tx micro.DataSource) error) error {
 	return a.internal.Transaction(func(tx *gorm.DB) error {
 		return cb(&adapter{
 			internal: tx,
+			tenantId: a.tenantId,
 		})
 	})
 }
@@ -115,7 +133,7 @@ func (a adapter) Close() {
 	if err != nil {
 		log.Printf("unable to close database: %s", err)
 	} else {
-		sqlDB.Close()
+		_ = sqlDB.Close()
 	}
 }
 
@@ -136,24 +154,27 @@ func NewGormAdapter(url string, schema string) micro.DataSource {
 	db := createLink(url, schema)
 	return &adapter{
 		internal: db,
+		tenantId: schema,
+		url:      url,
 	}
 }
 
 func createLink(url string, dbschema string) *gorm.DB {
 	var dialector gorm.Dialector
 	supportSchema := false
-	if strings.HasPrefix(url, "postgres") || strings.HasPrefix(url, "pg") || strings.HasPrefix(url, "postgresql") {
-		url = strings.ReplaceAll(url, "pg:", "postgres:")
-		url = strings.ReplaceAll(url, "postgresql:", "postgres:")
+	tenantUrl := strings.ReplaceAll(url, "__tenant__", dbschema)
+	if strings.HasPrefix(url, "postgres") || strings.HasPrefix(tenantUrl, "pg") || strings.HasPrefix(tenantUrl, "postgresql") {
+		tenantUrl = strings.ReplaceAll(tenantUrl, "pg:", "postgres:")
+		tenantUrl = strings.ReplaceAll(tenantUrl, "postgresql:", "postgres:")
 		if dbschema != "" && dbschema != "public" {
-			url += "?search_path=" + dbschema
+			tenantUrl += "?search_path=" + dbschema
 		}
-		dialector = postgres.Open(url)
+		dialector = postgres.Open(tenantUrl)
 		supportSchema = true
-	} else if strings.HasPrefix(url, "file:") || strings.HasSuffix(url, ".db") {
-		dialector = sqlite.Open(url)
+	} else if strings.HasPrefix(tenantUrl, "file:") || strings.HasSuffix(tenantUrl, ".db") {
+		dialector = sqlite.Open(tenantUrl)
 	} else {
-		log.Fatalf("unsupported database type: %s", url)
+		log.Fatalf("unsupported database type: %s", tenantUrl)
 	}
 
 	dbLogger := logger.New(

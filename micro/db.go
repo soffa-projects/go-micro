@@ -1,6 +1,7 @@
 package micro
 
 import (
+	"github.com/jackc/pgx/v4"
 	"github.com/soffa-projects/go-micro/util/errors"
 	"io/fs"
 )
@@ -19,6 +20,9 @@ type DataSourceMigrations interface {
 }
 
 type DataSource interface {
+	Conn() *pgx.Conn
+	IsPostgres() bool
+	Tenant() string
 	DataSourceMigrations
 	Transaction(func(tx DataSource) error) error
 	Close()

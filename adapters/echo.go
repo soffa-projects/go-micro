@@ -76,13 +76,14 @@ type echoRouterAdapter struct {
 	e *echo.Echo
 }
 
-func NewEchoAdapter(config micro.RouterConfig) micro.Router {
+func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 	e := echo.New()
 	e.HideBanner = true
 	e.IPExtractor = echo.ExtractIPFromXFFHeader()
 
 	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			c.Set(micro.EnvKey, env)
 			tenantId := c.Request().Header.Get(micro.TenantIdHttpHeader)
 			if tenantId == "" {
 				tenantId = micro.DefaultTenantId
@@ -94,10 +95,16 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 			if h.IsStrEmpty(ipAddress) {
 				ipAddress = "0.0.0.0"
 			}
+			authzHeader := c.Request().Header.Get("Authorization")
+			bearer := ""
+			if authzHeader != "" && strings.HasPrefix(strings.ToLower(authzHeader), "bearer ") {
+				bearer = authzHeader[7:]
+			}
 			auth := &micro.Authentication{
 				Authenticated: false,
-				//TenantId:      tenantId,
-				IpAddress: ipAddress,
+				Authorization: authzHeader,
+				Bearer:        bearer,
+				IpAddress:     ipAddress,
 			}
 			c.Set(micro.TenantId, tenantId)
 			c.Set(micro.AuthKey, auth)
@@ -140,7 +147,7 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 	}
 	/*if config.Prometheus != nil && config.Prometheus.Enabled {
 		e.F(echoprometheus.NewMiddleware(config.Prometheus.Subsystem)) // adds middleware to gather metrics
-		e.GET("/metrics", echoprometheus.NewHandler())                   // adds route to serve gathered metrics
+		e.GET("/metrics", echoprometheus.NewHandler()) // adds route to serve gathered metrics
 	}*/
 	if config.RemoveTrailSlash {
 		e.Pre(middleware.RemoveTrailingSlash())
@@ -156,13 +163,20 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 				if authz == "" || !strings.HasPrefix(authz, "Bearer ") {
 					return true
 				}
-				return false
+				parts := strings.Split(authz, ".")
+				if len(parts) == 3 {
+					// It might be a JWT
+					return false
+				}
+				// skip also if the token is not a jwt
+				return true
 			},
 			ErrorHandler: func(c echo.Context, err error) error {
 				return c.JSON(http.StatusUnauthorized, err.Error())
 			},
 			SuccessHandler: func(c echo.Context) {
 				user := c.Get(micro.AuthKey)
+				tenantId := c.Get(micro.TenantId)
 				if user == nil {
 					return
 				}
@@ -171,12 +185,12 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 				claims0 := token.Claims
 
 				sub, _ := claims0.GetSubject()
-				issuer, _ := claims0.GetIssuer()
+				// issuer, _ := claims0.GetIssuer()
 
-				tenantId := micro.DefaultTenantId
-				if config.MultiTenant && issuer != "" {
+				//tenantId := micro.DefaultTenantId
+				/*if config.MultiTenant && issuer != "" {
 					tenantId = issuer
-				}
+				}*/
 
 				ipAddress := c.RealIP()
 				if h.IsStrEmpty(ipAddress) {
@@ -189,10 +203,6 @@ func NewEchoAdapter(config micro.RouterConfig) micro.Router {
 					UserId:        sub,
 					Authenticated: true,
 					IpAddress:     ipAddress,
-					// TenantId:      tenantId,
-					Token: &micro.AuthToken{
-						Issuer: issuer,
-					},
 				}
 
 				//TODO: F depenedency injection (UserService)
@@ -288,7 +298,7 @@ func (r *echoRouterAdapter) Group(path string, filters ...micro.MiddlewareFunc) 
 	}
 }
 
-func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, handler micro.ProxyHandlerFunc) {
+func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream) {
 	r.e.Any(path, func(c echo.Context) error {
 		uriParts := strings.Split(c.Request().URL.Path, "?")
 		requestUri := uriParts[0]
@@ -299,24 +309,6 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, 
 		upstream := upstreams.Lookup(requestUri)
 		if upstream == nil {
 			return echo.NewHTTPError(http.StatusNotFound, "no_upstream_found")
-		}
-		ctx := createRouteContext(c)
-		authz := c.Request().Header.Get("Authorization")
-		bearerAuthz := ""
-		if authz != "" && strings.HasPrefix(strings.ToLower(authz), "bearer ") {
-			bearerAuthz = authz[7:]
-		}
-		pctx := micro.ProxyCtx{
-			Ctx:           ctx,
-			UpstreamId:    upstream.Id,
-			UpstreamUrl:   upstream.Uri,
-			Authorization: authz,
-			Bearer:        bearerAuthz,
-		}
-		err := handler(&pctx)
-
-		if err != nil {
-			return mapHttpResponse(err, c)
 		}
 
 		chain := h.F(url.JoinPath(upstream.Uri, strings.TrimPrefix(requestUri, upstream.Prefix)))
@@ -330,8 +322,12 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, 
 		)
 		copyHeader(c.Request().Header, req.Header)
 
-		if pctx.Authorization != "" {
-			req.Header.Set("Authorization", pctx.Authorization)
+		authz := c.Get(micro.AuthKey)
+		if authz != nil {
+			_authz := authz.(*micro.Authentication)
+			if _authz.Authenticated && _authz.Authorization != "" {
+				req.Header.Set("Authorization", _authz.Authorization)
+			}
 		}
 
 		resp, err := http.DefaultClient.Do(req)
@@ -349,6 +345,17 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, 
 		}
 
 		return nil
+	})
+}
+
+func (r *echoRouterAdapter) Use(filter micro.MiddlewareFunc) {
+	r.e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if err := filter(createRouteContext(c)); err != nil {
+				return mapHttpResponse(err, c)
+			}
+			return next(c)
+		}
 	})
 }
 
@@ -460,15 +467,15 @@ func handleRequest(c echo.Context, handler interface{}) (err error) {
 	handlerType := reflect.TypeOf(handler)
 
 	if handlerType.Kind() != reflect.Func {
-		return fmt.Errorf("controller method is not a function")
+		return mapHttpResponse(fmt.Errorf("controller method is not a function"), c)
 	}
 
 	numIn := handlerType.NumIn()
 	if numIn == 0 {
-		return fmt.Errorf("controller method must have at least one argument (micro.Ctx)")
+		return mapHttpResponse(fmt.Errorf("controller method must have at least one argument (micro.Ctx)"), c)
 	}
 	if numIn > 2 {
-		return fmt.Errorf("controller method must have at most two arguments (micro.Ctx, input binding)")
+		return mapHttpResponse(fmt.Errorf("controller method must have at most two arguments (micro.Ctx, input binding)"), c)
 	}
 
 	firstArgType := handlerType.In(0)
@@ -594,40 +601,18 @@ func createMiddlewares(filters []micro.MiddlewareFunc) []echo.MiddlewareFunc {
 }
 
 func createRouteContext(c echo.Context) micro.Ctx {
+	env := c.Get(micro.EnvKey).(*micro.Env)
 	value := c.Get(micro.AuthKey)
 	tenantId := c.Get(micro.TenantId).(string)
 	var result micro.Ctx
 	if value == nil {
-		result = micro.NewCtx(tenantId)
+		result = micro.NewCtx(env, tenantId)
 	} else {
 		auth := value.(*micro.Authentication)
-		result = micro.NewAuthCtx(tenantId, auth)
+		result = micro.NewAuthCtx(env, tenantId, auth)
 	}
 	result.Wrapped = c
 	return result
-}
-
-func validateStruct(v interface{}, action string) error {
-	val := reflect.ValueOf(v).Elem()
-	if val.Kind() != reflect.Struct {
-		return fmt.Errorf("provided value is not a struct")
-	}
-	// Use reflection to loop through the fields
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Type().Field(i)
-		tag := field.Tag.Get("validate")
-
-		shouldValidate := strings.Contains(tag, "required_"+action)
-		// Check if the field has validation tag for the given action
-		if shouldValidate {
-			err := validate.Var(val.Field(i).Interface(), "required")
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }
 
 func init() {

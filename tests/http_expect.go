@@ -25,6 +25,7 @@ type HttpTestResult struct {
 type HttpRequest struct {
 	t             *testing.T
 	method        string
+	form          bool
 	path          string
 	body          interface{}
 	internal      *httpexpect.Expect
@@ -118,6 +119,20 @@ func (f *HttpExpect) GET(path string) *HttpRequest {
 func (f *HttpExpect) POST(path string, body ...interface{}) *HttpRequest {
 	return f.request(http.MethodPost, path, body...)
 }
+func (f *HttpExpect) POSTForm(path string, body ...interface{}) *HttpRequest {
+	r := &HttpRequest{
+		t:        f.t,
+		internal: f.http,
+		method:   http.MethodPost,
+		form:     true,
+		path:     path,
+		headers:  map[string]string{},
+	}
+	if body != nil {
+		r.body = body[0]
+	}
+	return r
+}
 
 func (f *HttpExpect) PUT(path string, body ...interface{}) *HttpRequest {
 	return f.request(http.MethodPut, path, body...)
@@ -153,7 +168,11 @@ func (r *HttpRequest) Params(params any) *HttpRequest {
 func (r *HttpRequest) Expect() *HttpTestResult {
 	req := r.internal.Request(r.method, r.path)
 	if r.body != nil {
-		req = req.WithJSON(r.body)
+		if r.form {
+			req = req.WithForm(r.body)
+		} else {
+			req = req.WithJSON(r.body)
+		}
 	}
 	if r.params != nil {
 		req = req.WithQueryObject(r.params)

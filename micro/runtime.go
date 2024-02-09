@@ -32,16 +32,18 @@ type Cfg struct {
 
 // ----------------------------------------------
 
+var _configStore = map[string]string{}
+
 func Set(key string, value string) {
-	_ = os.Setenv(key, value)
+	_configStore[key] = value
 }
 
-func (app *App) Get(key string) string {
-	return h.RequireEnv(key)
+func Get(key string) string {
+	return _configStore[key]
 }
 
 func (app *App) Cleanup() {
-	if app.Env.DB != nil {
+	if app.Env.DataSources != nil {
 		app.Env.Close()
 	}
 }
@@ -51,9 +53,6 @@ func (app *App) Init(features []Feature) *App {
 
 	env := app.Env
 	globalLocalizer = env.Localizer
-
-	globalEnv = env
-	globalApp = app
 
 	if env.Scheduler != nil {
 		di.Register(SchedulerService, env.Scheduler)
@@ -114,13 +113,13 @@ func (app *App) Run(addr ...string) {
 
 	// start the server
 	go func() {
-		_ = app.Env.Router.Start("0.0.0.0:" + port)
+		_ = app.Router.Start("0.0.0.0:" + port)
 	}()
 
 	// run the cleanup after the server is terminated
 	defer func() {
-		_ = app.Env.Router.Shutdown()
-		if app.Env.DB != nil {
+		_ = app.Router.Shutdown()
+		if app.Env.DataSources != nil {
 			app.Env.Close()
 		}
 		if app.ShutdownListeners != nil {
