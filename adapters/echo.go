@@ -94,6 +94,10 @@ func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 			if tenantId == "" {
 				tenantId = micro.DefaultTenantId
 			}
+			forwardedFor := c.Request().Header.Get("X-Forwarded-For")
+			if !h.IsEmpty(forwardedFor) {
+				c.Request().Host = forwardedFor
+			}
 			ipAddress := c.RealIP()
 			if h.IsStrEmpty(ipAddress) {
 				ipAddress = c.Request().RemoteAddr
@@ -119,6 +123,7 @@ func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 					auth.Password = parts[1]
 				}
 			}
+
 			c.Set(micro.TenantId, tenantId)
 			c.Set(micro.AuthKey, auth)
 			return next(c)
