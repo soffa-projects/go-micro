@@ -231,6 +231,22 @@ func (e Env) Close() {
 	}
 }
 
+func (ctx Ctx) Request() *http.Request {
+	e := ctx.Wrapped
+	if e == nil {
+		return nil
+	}
+	return e.(echo.Context).Request()
+}
+func (ctx Ctx) SetTenantId(value string) {
+	e := ctx.Wrapped
+	if e == nil {
+		return
+	}
+	e.(echo.Context).Set(TenantId, value)
+	ctx.TenantId = value
+}
+
 func (ctx Ctx) Bind(modelType reflect.Type) (error, any) {
 	if ctx.Wrapped == nil {
 		log.Fatalf("ctx.Wrapped is nil")

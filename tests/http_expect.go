@@ -201,6 +201,11 @@ func (r *HttpRequest) TenantId(value string) *HttpRequest {
 	return r
 }
 
+func (r *HttpRequest) Host(value string) *HttpRequest {
+	r.headers["Host"] = value
+	return r
+}
+
 func (r *HttpRequest) Header(name string, value string) *HttpRequest {
 	r.headers[name] = value
 	return r

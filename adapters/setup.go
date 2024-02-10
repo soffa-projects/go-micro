@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/soffa-projects/go-micro/micro"
 	"github.com/soffa-projects/go-micro/util/h"
+	"github.com/thoas/go-funk"
 	"golang.org/x/text/language"
 	"os"
 	"strings"
@@ -81,11 +82,19 @@ func setupLocales(env *micro.Env, cfg micro.Cfg) {
 
 }
 
+func getInitialTenants() []string {
+	tenants := strings.Split(h.RequireEnv(micro.DatabaseInitialTenants), ",")
+	return funk.Map(tenants, func(tenant string) string {
+		parts := strings.Split(tenant, "|")
+		return parts[0]
+	}).([]string)
+}
+
 func prepareMultiTenancy(env *micro.Env, cfg micro.Cfg) {
 	var tenantLoader micro.TenantLoader
 	if cfg.MultiTenant {
-		defaultTenants := h.RequireEnv(micro.DatabaseInitialTenants)
-		tenantLoader = micro.NewFixedTenantLoader(strings.Split(defaultTenants, ","))
+		defaultTenants := getInitialTenants()
+		tenantLoader = micro.NewFixedTenantLoader(defaultTenants)
 	} else {
 		tenantLoader = micro.NewFixedTenantLoader([]string{micro.DefaultTenantId})
 	}

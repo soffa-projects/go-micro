@@ -18,6 +18,7 @@ import (
 	"github.com/soffa-projects/go-micro/util/errors"
 	"github.com/soffa-projects/go-micro/util/h"
 	echoSwagger "github.com/swaggo/echo-swagger"
+	"github.com/thoas/go-funk"
 	"io"
 	"net/http"
 	"net/url"
@@ -305,8 +306,9 @@ func (r *echoRouterAdapter) request(method string, path string, handler interfac
 }
 
 func (r *echoRouterAdapter) Group(path string, filters ...micro.MiddlewareFunc) micro.BaseRouter {
+	middlewares := createMiddlewares(filters)
 	return &echoGroupRoute{
-		g: r.e.Group(path, createMiddlewares(filters)...),
+		g: r.e.Group(path, middlewares...),
 	}
 }
 
@@ -612,18 +614,16 @@ func mapHttpResponse(c echo.Context, err error) error {
 // =================================================================================
 
 func createMiddlewares(filters []micro.MiddlewareFunc) []echo.MiddlewareFunc {
-	middlewares := make([]echo.MiddlewareFunc, 0)
-	for _, filter := range filters {
-		middlewares = append(middlewares, func(next echo.HandlerFunc) echo.HandlerFunc {
+	return funk.Map(filters, func(filter micro.MiddlewareFunc) echo.MiddlewareFunc {
+		return func(next echo.HandlerFunc) echo.HandlerFunc {
 			return func(c echo.Context) error {
 				if err := filter(createRouteContext(c)); err != nil {
 					return mapHttpResponse(c, err)
 				}
 				return next(c)
 			}
-		})
-	}
-	return middlewares
+		}
+	}).([]echo.MiddlewareFunc)
 }
 
 func createRouteContext(c echo.Context) micro.Ctx {

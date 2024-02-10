@@ -2,7 +2,9 @@ package micro
 
 import (
 	gerror "errors"
+	"fmt"
 	"github.com/soffa-projects/go-micro/util/errors"
+	"github.com/soffa-projects/go-micro/util/h"
 	"io/fs"
 )
 
@@ -62,6 +64,7 @@ type SimpleRepo[T any] struct {
 }
 
 func NewSimpleRepo[T any](db DataSource, entity T) *SimpleRepo[T] {
+	h.RaiseIf(db == nil, fmt.Errorf("datasource_is_nil"))
 	return &SimpleRepo[T]{db: db, entity: entity}
 }
 
