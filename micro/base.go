@@ -1,6 +1,7 @@
 package micro
 
 import (
+	"context"
 	"errors"
 	"github.com/labstack/echo/v4"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -168,7 +169,11 @@ func (ctx Ctx) Authenticate(auth Authentication, tenant string) error {
 }
 
 func (e Env) SharedDB() DataSource {
-	return e.DataSources[DefaultTenantId]
+	ds := e.DataSources[DefaultTenantId]
+	if ds == nil {
+		log.Fatalf("no shared db found")
+	}
+	return ds
 }
 
 func NewCtx(env *Env, tenantId string) Ctx {
@@ -229,6 +234,19 @@ func (e Env) Close() {
 	for _, db := range e.DataSources {
 		db.Close()
 	}
+}
+
+func (ctx Ctx) Response() *echo.Response {
+	e := ctx.Wrapped
+	if e == nil {
+		return nil
+	}
+	return e.(echo.Context).Response()
+}
+
+func (ctx Ctx) RequestWithValue(key string, value any) *http.Request {
+	req := ctx.Request()
+	return req.WithContext(context.WithValue(req.Context(), key, value))
 }
 
 func (ctx Ctx) Request() *http.Request {

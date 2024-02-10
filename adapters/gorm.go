@@ -127,6 +127,15 @@ func (a adapter) Ping() error {
 	return a.internal.Exec("SELECT 1").Error
 }
 
+func (a adapter) NewTx() micro.DataSource {
+	tx := a.internal.Begin()
+	return &adapter{
+		internal: tx,
+		url:      a.url,
+		tenantId: a.tenantId,
+	}
+}
+
 func (a adapter) Transaction(cb func(tx micro.DataSource) error) error {
 	return a.internal.Transaction(func(tx *gorm.DB) error {
 		return cb(&adapter{

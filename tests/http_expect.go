@@ -62,8 +62,15 @@ type ObjectExpect struct {
 func HttpTest(t *testing.T, handler http.Handler, teardown func()) HttpExpect {
 	server := httptest.NewServer(handler)
 	return HttpExpect{
-		t:    t,
-		http: httpexpect.Default(t, server.URL),
+		t: t,
+		http: httpexpect.WithConfig(httpexpect.Config{
+			TestName: t.Name(),
+			BaseURL:  server.URL,
+			Reporter: httpexpect.NewFatalReporter(t),
+			Printers: []httpexpect.Printer{
+				httpexpect.NewCompactPrinter(t),
+			},
+		}),
 		Teardown: func() {
 			server.Close()
 			teardown()
@@ -159,6 +166,7 @@ func (f *HttpExpect) request(method string, path string, body ...interface{}) *H
 		path:     path,
 		headers:  map[string]string{},
 	}
+
 	if body != nil {
 		r.body = body[0]
 	}
