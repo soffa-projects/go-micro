@@ -33,6 +33,11 @@ func (a adapter) Tenant() string {
 }
 
 func (a adapter) Create(model interface{}) error {
+	if model, ok := model.(micro.EntityHooks); ok {
+		if err := model.PreCreate(); err != nil {
+			return err
+		}
+	}
 	return a.internal.Create(model).Error
 }
 

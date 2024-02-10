@@ -18,7 +18,17 @@ func ToSnakeCase(str string) string {
 }
 
 func PtrStr(value string) *string {
+	if value == "" {
+		return nil
+	}
 	return &value
+}
+
+func Str(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func Ptr[T any](value T) *T {

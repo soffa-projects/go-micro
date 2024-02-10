@@ -14,6 +14,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/soffa-projects/go-micro/micro"
 	"github.com/soffa-projects/go-micro/schema"
+	"github.com/soffa-projects/go-micro/util/digest"
 	"github.com/soffa-projects/go-micro/util/errors"
 	"github.com/soffa-projects/go-micro/util/h"
 	echoSwagger "github.com/swaggo/echo-swagger"
@@ -109,6 +110,13 @@ func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 				Authorization: authzHeader,
 				Bearer:        bearer,
 				IpAddress:     ipAddress,
+			}
+			if authzHeader != "" && strings.HasPrefix(strings.ToLower(authzHeader), "basic ") {
+				parts := strings.SplitN(digest.DecodeBase64(authzHeader[6:]), ":", 2)
+				if len(parts) >= 2 {
+					auth.Username = parts[0]
+					auth.Password = parts[1]
+				}
 			}
 			c.Set(micro.TenantId, tenantId)
 			c.Set(micro.AuthKey, auth)
@@ -233,7 +241,7 @@ func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 					}
 					auth.Claims = make(map[string]interface{})
 					for key, value := range claims {
-						if h.IsNotNil(value) && !h.IsStrEmpty(value) {
+						if h.IsNotEmpty(value) && !h.IsStrEmpty(value) {
 							auth.Claims[key] = value
 						}
 					}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/soffa-projects/go-micro/micro"
+	"github.com/soffa-projects/go-micro/util/digest"
 	"github.com/soffa-projects/go-micro/util/h"
 	"net/http"
 	"net/http/httptest"
@@ -208,6 +209,13 @@ func (r *HttpRequest) Header(name string, value string) *HttpRequest {
 func (r *HttpRequest) BearerAuth(token string) *HttpRequest {
 	if !h.IsStrEmpty(token) {
 		r.authorization = "Bearer " + token
+	}
+	return r
+}
+
+func (r *HttpRequest) BasicAuth(username string, password string) *HttpRequest {
+	if !h.IsStrEmpty(username) && !h.IsStrEmpty(password) {
+		r.authorization = "Basic " + digest.EncodeToBase64String(fmt.Sprintf("%s:%s", username, password))
 	}
 	return r
 }

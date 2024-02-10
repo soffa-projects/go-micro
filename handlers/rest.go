@@ -10,7 +10,7 @@ import (
 )
 
 func GetEntityList[T any](c micro.Ctx, filter ...schema.FilterInput) schema.EntityList[T] {
-	db := c.DB()
+	db := c.CurrentDB()
 	var data []T
 	q := micro.Query{}
 	if len(filter) > 0 {
@@ -24,7 +24,7 @@ func GetEntityList[T any](c micro.Ctx, filter ...schema.FilterInput) schema.Enti
 }
 
 func CreateEntity[T any](c micro.Ctx, input any, entity T) T {
-	db := c.DB()
+	db := c.CurrentDB()
 	//var entity T
 	h.RaiseAny(h.CopyAllFields(&entity, input, true))
 	prefix := h.F(reflections.GetFieldTag(entity, "Id", "prefix"))
@@ -35,7 +35,7 @@ func CreateEntity[T any](c micro.Ctx, input any, entity T) T {
 }
 
 func UpdateEntity[T any](c micro.Ctx, input any) T {
-	db := c.DB()
+	db := c.CurrentDB()
 	id := h.UnwrapStr(h.F(reflections.GetField(input, "Id")))
 	var entity T
 	err := db.First(&entity, micro.Query{
@@ -49,7 +49,7 @@ func UpdateEntity[T any](c micro.Ctx, input any) T {
 }
 
 func DeleteEntity[T any](c micro.Ctx, input schema.IdModel) schema.IdModel {
-	db := c.DB()
+	db := c.CurrentDB()
 	var entity T
 	_, err := db.Delete(entity, micro.Query{
 		W:    "id = ?",

@@ -1,6 +1,7 @@
 package micro
 
 import (
+	gerror "errors"
 	"github.com/soffa-projects/go-micro/util/errors"
 	"io/fs"
 )
@@ -16,6 +17,10 @@ const DefaultMigrationsTable = "z_migrations"
 
 type DataSourceMigrations interface {
 	Migrate(fs fs.FS, location string, migrationsTable string)
+}
+
+type EntityHooks interface {
+	PreCreate() error
 }
 
 type DataSource interface {
@@ -49,4 +54,30 @@ type Query struct {
 	Select string
 	Offset int64
 	Limit  int64
+}
+
+type SimpleRepo[T any] struct {
+	db     DataSource
+	entity T
+}
+
+func NewSimpleRepo[T any](db DataSource, entity T) *SimpleRepo[T] {
+	return &SimpleRepo[T]{db: db, entity: entity}
+}
+
+func (r *SimpleRepo[T]) Count(q ...Query) (int64, error) {
+	var model T
+	if len(q) == 0 {
+		return r.db.Count(model, Query{})
+	}
+	return r.db.Count(model, q[0])
+}
+
+func (r *SimpleRepo[T]) FirstBy(q string, args ...any) (*T, error) {
+	var model *T
+	err := r.db.First(&model, Query{W: q, Args: args})
+	if err != nil && gerror.Is(err, ErrRecordNotFound) {
+		return nil, nil
+	}
+	return model, err
 }

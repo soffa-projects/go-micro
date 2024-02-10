@@ -2,17 +2,18 @@ package h
 
 import (
 	log "github.com/sirupsen/logrus"
+	"github.com/thoas/go-funk"
 	"reflect"
 	"strconv"
 	"strings"
 )
 
-func IsNil(v interface{}) bool {
-	return v == nil
+func IsEmpty(v interface{}) bool {
+	return funk.IsEmpty(v)
 }
 
-func IsNotNil(v interface{}) bool {
-	return v != nil
+func IsNotEmpty(v interface{}) bool {
+	return !funk.IsEmpty(v)
 }
 
 func IsString(value interface{}) bool {
@@ -21,7 +22,7 @@ func IsString(value interface{}) bool {
 }
 
 func IsStrEmpty(v interface{}) bool {
-	if v == nil {
+	if IsEmpty(v) {
 		return true
 	}
 	if !IsString(v) {

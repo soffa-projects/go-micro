@@ -1,6 +1,7 @@
 package micro
 
 import (
+	"errors"
 	"github.com/labstack/echo/v4"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/redis/go-redis/v9"
@@ -40,6 +41,8 @@ type Authentication struct {
 	Authenticated bool
 	Authorization string
 	Bearer        string
+	Username      string
+	Password      string
 	Name          string
 	Email         string
 	UserId        string
@@ -125,7 +128,22 @@ func (ctx Ctx) IsDefaultTenant() bool {
 	return ctx.TenantId == DefaultTenantId
 }
 
-func (ctx Ctx) TenantDB() DataSource {
+func (ctx Ctx) TenantDB(tenant string) (DataSource, error) {
+	if ds, ok := ctx.Env.DataSources[tenant]; !ok {
+		return nil, errors.New("missing_db_tenant")
+	} else {
+		return ds, nil
+	}
+}
+func (e Env) TenantDB(tenant string) (DataSource, error) {
+	if ds, ok := e.DataSources[tenant]; !ok {
+		return nil, errors.New("missing_db_tenant")
+	} else {
+		return ds, nil
+	}
+}
+
+func (ctx Ctx) CurrentDB() DataSource {
 	return ctx.db
 }
 
@@ -136,7 +154,7 @@ func (ctx Ctx) IsAuthenticated() bool {
 	return ctx.Auth.Authenticated
 }
 
-func (ctx Ctx) SetAuthorization(auth Authentication, tenant string) error {
+func (ctx Ctx) Authenticate(auth Authentication, tenant string) error {
 	ctx.Auth = &Authentication{}
 	if err := h.CopyAllFields(ctx.Auth, auth, true); err != nil {
 		return err
