@@ -6,9 +6,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	sentryecho "github.com/getsentry/sentry-go/echo"
 	"github.com/go-playground/validator/v10"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	log "github.com/sirupsen/logrus"
@@ -24,6 +22,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"time"
 )
 
 var validate *validator.Validate
@@ -76,7 +75,8 @@ func Bind(c echo.Context, input interface{}) error {
 
 type echoRouterAdapter struct {
 	micro.Router
-	e *echo.Echo
+	e   *echo.Echo
+	cfg micro.RouterConfig
 }
 
 func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
@@ -160,7 +160,20 @@ func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 	if config.BodyLimit != "" {
 		e.Use(middleware.BodyLimit(config.BodyLimit))
 	}
-	if config.Swagger {
+	if config.SwaggerSpec != nil {
+		spec := config.SwaggerSpec
+		var host string
+		spec.BasePath = config.BasePath
+		spec.Version = env.AppVersion
+		spec.Title = env.AppName
+		if config.Production {
+			spec.Schemes = []string{"https"}
+			host = h.RequireEnv("APP_URL")
+		} else {
+			spec.Schemes = []string{"http", "https"}
+			host = h.GetEnvOrDefault("APP_URL", "localhost:8080")
+		}
+		spec.Host = host
 		e.GET("/swagger/*", echoSwagger.WrapHandler)
 	}
 	/*if config.Prometheus != nil && config.Prometheus.Enabled {
@@ -172,91 +185,52 @@ func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 	}
 
 	if config.TokenProvider != nil && !config.DisableJwtFilter {
-		e.Use(echojwt.WithConfig(echojwt.Config{
-			SigningKey: []byte(config.TokenProvider.SigningKey()),
-			ContextKey: micro.AuthKey,
-			Skipper: func(c echo.Context) bool {
-				// let the app decide which routes require authentication
-				authz := c.Request().Header.Get("Authorization")
-				if authz == "" || !strings.HasPrefix(authz, "Bearer ") {
-					return true
+		e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+			return func(c echo.Context) error {
+				auth := c.Get(micro.AuthKey).(*micro.Authentication)
+				if auth.Bearer == "" {
+					return next(c)
 				}
-				parts := strings.Split(authz, ".")
-				if len(parts) == 3 {
-					// It might be a JWT
-					return false
-				}
-				// skip also if the token is not a jwt
-				return true
-			},
-			ErrorHandler: func(c echo.Context, err error) error {
-				return c.JSON(http.StatusUnauthorized, err.Error())
-			},
-			SuccessHandler: func(c echo.Context) {
-				user := c.Get(micro.AuthKey)
-				tenantId := c.Get(micro.TenantId)
-				if user == nil {
-					return
-				}
-				token := user.(*jwt.Token)
-
-				claims0 := token.Claims
-
-				sub, _ := claims0.GetSubject()
-				// issuer, _ := claims0.GetIssuer()
-
-				//tenantId := micro.DefaultTenantId
-				/*if config.MultiTenant && issuer != "" {
-					tenantId = issuer
-				}*/
-
-				ipAddress := c.RealIP()
-				if h.IsStrEmpty(ipAddress) {
-					ipAddress = c.Request().RemoteAddr
-				}
-				if h.IsStrEmpty(ipAddress) {
-					ipAddress = "0.0.0.0"
-				}
-				auth := &micro.Authentication{
-					UserId:        sub,
-					Authenticated: true,
-					IpAddress:     ipAddress,
+				parts := strings.Split(auth.Bearer, ".")
+				if len(parts) < 3 {
+					// maybe it's a basic auth
+					return next(c)
 				}
 
-				//TODO: F depenedency injection (UserService)
-				if claims0 != nil && reflect.TypeOf(claims0).String() == "jwt.MapClaims" {
-					claims := claims0.(jwt.MapClaims)
-
-					if value, ok := h.MapLookup(claims, "tenant", "tenant_id", "tenantId"); ok {
-						tenantId = value.(string)
-					}
-					if value, ok := h.MapLookup(claims, "roles", "role"); ok {
-						auth.Roles = strings.Split(value.(string), ",")
-					}
-					if value, ok := claims["permissions"]; ok {
-						auth.Permissions = strings.Split(value.(string), ",")
-					}
-					if value, ok := claims["name"]; ok {
-						auth.Name = value.(string)
-					}
-					if value, ok := claims["email"]; ok {
-						auth.Email = value.(string)
-					}
-					if value, ok := h.MapLookup(claims, "phone", "phone_number", "phoneNumber"); ok {
-						auth.PhonerNumber = value.(string)
-					}
-					auth.Claims = make(map[string]interface{})
-					for key, value := range claims {
-						if h.IsNotEmpty(value) && !h.IsStrEmpty(value) {
-							auth.Claims[key] = value
-						}
-					}
+				skipSignature := !env.Production && micro.Get(micro.InsecureJwtDev) == "true"
+				data, err := env.TokenProvider.Decode(auth.Bearer, !skipSignature)
+				if err != nil {
+					return c.JSON(http.StatusUnauthorized, err.Error())
 				}
 
-				c.Set(micro.TenantId, tenantId)
+				auth.Authenticated = true
+				if value, ok := h.MapLookup(data, "sub", "id"); ok {
+					auth.UserId = value.(string)
+				}
+				if value, ok := h.MapLookup(data, "username"); ok {
+					auth.Username = value.(string)
+				}
+				if value, ok := h.MapLookup(data, "phone", "phone_number"); ok {
+					auth.PhonerNumber = value.(string)
+				}
+				if value, ok := h.MapLookup(data, "email"); ok {
+					auth.Email = value.(string)
+				}
+				if value, ok := h.MapLookup(data, "role"); ok {
+					auth.Roles = []string{value.(string)}
+				} else if value, ok := h.MapLookup(data, "roles"); ok {
+					auth.Roles = strings.Split(value.(string), ",")
+				}
+				if value, ok := h.MapLookup(data, "permissions"); ok {
+					auth.Permissions = strings.Split(value.(string), ",")
+				}
+				if value, ok := h.MapLookup(data, "tenant", "tenant_id", "tenant-id", "tenantId"); ok {
+					c.Set(micro.TenantId, value.(string))
+				}
 				c.Set(micro.AuthKey, auth)
-			},
-		}))
+				return next(c)
+			}
+		})
 	}
 
 	e.GET("/health", func(c echo.Context) error {
@@ -264,7 +238,34 @@ func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 		return c.JSON(http.StatusOK, status)
 	})
 
-	return &echoRouterAdapter{e: e}
+	if !config.Production && env.TokenProvider != nil {
+
+		type DevTokenRequest struct {
+			Tenant string `query:"tenant" default:"public"`
+		}
+
+		e.GET("/dev/token", func(c echo.Context) error {
+			var input DevTokenRequest
+			if err := c.Bind(&input); err != nil {
+				return c.JSON(http.StatusBadRequest, err.Error())
+			}
+			token, err := env.TokenProvider.CreateToken(
+				"user",
+				"service",
+				"dev",
+				h.Map{
+					"tenant": input.Tenant,
+				}, time.Hour)
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, err.Error())
+			}
+			return c.String(http.StatusOK, token)
+		})
+
+		log.Infof("DEV token endpoint is available at /dev/token?tenant=<tenant>")
+	}
+
+	return &echoRouterAdapter{e: e, cfg: config}
 }
 
 func (r *echoRouterAdapter) Handler() http.Handler {
@@ -300,7 +301,7 @@ func (r *echoRouterAdapter) DELETE(path string, handler interface{}, filters ...
 }
 
 func (r *echoRouterAdapter) request(method string, path string, handler interface{}, filters []micro.MiddlewareFunc) {
-	r.e.Match([]string{method}, path, func(c echo.Context) (err error) {
+	r.e.Match([]string{method}, r.path(path), func(c echo.Context) (err error) {
 		defer func() {
 			if err0 := recover(); err0 != nil {
 				err = mapHttpResponse(c, err0.(error))
@@ -313,7 +314,7 @@ func (r *echoRouterAdapter) request(method string, path string, handler interfac
 func (r *echoRouterAdapter) Group(path string, filters ...micro.MiddlewareFunc) micro.BaseRouter {
 	middlewares := createMiddlewares(filters)
 	return &echoGroupRoute{
-		g: r.e.Group(path, middlewares...),
+		g: r.e.Group(r.path(path), middlewares...),
 	}
 }
 
@@ -376,6 +377,14 @@ func (r *echoRouterAdapter) Use(filter micro.MiddlewareFunc) {
 			return next(c)
 		}
 	})
+}
+
+func (r *echoRouterAdapter) path(path string) string {
+	if r.cfg.BasePath == "" || strings.HasPrefix(path, r.cfg.BasePath) {
+		return path
+	}
+	newPath := h.F(url.JoinPath(r.cfg.BasePath, path))
+	return newPath
 }
 
 func copyHeader(src, dst http.Header) {

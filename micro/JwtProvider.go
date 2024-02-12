@@ -11,7 +11,7 @@ import (
 
 type TokenProvider interface {
 	CreateToken(subject string, issuer string, audience string, claims map[string]interface{}, ttl time.Duration) (string, error)
-	Decode(token string) (map[string]interface{}, error)
+	Decode(token string, checkSignature bool) (map[string]interface{}, error)
 	SigningKey() string
 }
 
@@ -28,7 +28,7 @@ func (p *DefaultTokenProvider) SigningKey() string {
 	return p.secret
 }
 
-func (p *DefaultTokenProvider) Decode(token string) (map[string]interface{}, error) {
+func (p *DefaultTokenProvider) Decode(token string, checkSignature bool) (map[string]interface{}, error) {
 	if token == "" {
 		return nil, errors.New("empty token")
 	}
@@ -40,20 +40,20 @@ func (p *DefaultTokenProvider) Decode(token string) (map[string]interface{}, err
 		return []byte(p.secret), nil
 	})
 
-	if err != nil {
-		return nil, err
+	if err != nil && checkSignature {
+		return nil, errors.New("invalid_signature")
 	}
-
-	if claims, ok := t.Claims.(jwt.MapClaims); ok && t.Valid {
+	if checkSignature && !t.Valid {
+		return nil, errors.New("invalid_token")
+	}
+	res := make(map[string]interface{})
+	if claims, ok := t.Claims.(jwt.MapClaims); ok {
 		// Convert MapClaims to map[string]interface{}
-		res := make(map[string]interface{})
 		for key, value := range claims {
 			res[key] = value
 		}
-		return res, nil
-	} else {
-		return nil, errors.New("invalid token")
 	}
+	return res, nil
 }
 
 func (p *DefaultTokenProvider) CreateToken(subject string, issuer string, audience string, clms map[string]interface{}, ttl time.Duration) (string, error) {

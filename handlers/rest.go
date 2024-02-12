@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/oleiade/reflections"
+	log "github.com/sirupsen/logrus"
 	"github.com/soffa-projects/go-micro/micro"
 	"github.com/soffa-projects/go-micro/schema"
 	"github.com/soffa-projects/go-micro/util/errors"
@@ -16,6 +17,34 @@ func GetEntityList[T any](c micro.Ctx, filter ...schema.FilterInput) schema.Enti
 	if len(filter) > 0 {
 		q.W = filter[0].Where
 		q.Args = filter[0].Args
+	}
+	h.RaiseAny(db.Find(&data, q))
+	return schema.EntityList[T]{
+		Data: data,
+	}
+}
+
+func FilterEntityList[T any](c micro.Ctx, criteria any) schema.EntityList[T] {
+	db := c.CurrentDB()
+	var data []T
+	q := micro.Query{}
+	if criteria != nil {
+		fields := h.F(h.ToMap(criteria))
+		if len(fields) > 0 {
+			q.W = "1=1"
+			for k, v := range fields {
+				if !h.IsEmpty(v) {
+					q.W += " AND " + k + " = ?"
+					q.Args = append(q.Args, v)
+				}
+			}
+		}
+	}
+	url := c.Request().URL.Query()
+	page := url.Get("page")
+	limit := url.Get("limit")
+	if page != "" && limit != "" {
+		log.Debugf("fetchin paginated data: page=%v, limit=%v", page, limit)
 	}
 	h.RaiseAny(db.Find(&data, q))
 	return schema.EntityList[T]{

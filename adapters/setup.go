@@ -22,6 +22,7 @@ func NewApp(name string, version string, cfg micro.Cfg) *micro.App {
 		if err != nil {
 			log.Warn("unable to loading .env file")
 		}
+		micro.Set(micro.InsecureJwtDev, os.Getenv(micro.InsecureJwtDev))
 	}
 
 	env := &micro.Env{
@@ -29,6 +30,7 @@ func NewApp(name string, version string, cfg micro.Cfg) *micro.App {
 		AppName:    name,
 		AppVersion: version,
 	}
+
 	env.ServerPort = h.ToInt(h.GetEnvOrDefault("PORT", "8080"))
 	setupLocales(env, cfg)
 	prepareMultiTenancy(env, cfg)
@@ -240,9 +242,10 @@ func setupRouter(env *micro.Env, cfg micro.Cfg) micro.Router {
 			Cors:                       corsEnabled,
 			SentryDsn:                  h.GetEnv("SENTRY_DSN"),
 			RemoveTrailSlash:           true,
+			BasePath:                   cfg.BasePath,
 			DisableImplicitTransaction: cfg.DisableImplicitTransaction,
 			BodyLimit:                  "2M",
-			Swagger:                    !cfg.SwaggerDisabled,
+			SwaggerSpec:                cfg.SwaggerSpec,
 			Production:                 env.Production,
 			TokenProvider:              env.TokenProvider,
 			DisableJwtFilter:           cfg.DisableJwtFilter,

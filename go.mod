@@ -13,14 +13,14 @@ require (
 	github.com/go-resty/resty/v2 v2.11.0
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/google/martian/v3 v3.3.2
-	github.com/jackc/pgx/v4 v4.18.1
+	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.5.3
 	github.com/jinzhu/copier v0.4.0
 	github.com/joho/godotenv v1.5.1
-	github.com/labstack/echo-jwt/v4 v4.2.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/nicksnyder/go-i18n/v2 v2.4.0
 	github.com/oleiade/reflections v1.0.1
+	github.com/onrik/gorm-logrus v0.5.0
 	github.com/pelletier/go-toml/v2 v2.1.1
 	github.com/pressly/goose/v3 v3.18.0
 	github.com/redis/go-redis/v9 v9.4.0
@@ -31,7 +31,7 @@ require (
 	github.com/swaggo/echo-swagger v1.4.1
 	github.com/swaggo/swag v1.16.3
 	github.com/thoas/go-funk v0.9.3
-	golang.org/x/net v0.20.0
+	golang.org/x/crypto v0.18.0
 	golang.org/x/text v0.14.0
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/driver/sqlite v1.5.4
@@ -60,17 +60,11 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/hpcloud/tail v1.0.0 // indirect
 	github.com/imkira/go-interpol v1.1.0 // indirect
-	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
-	github.com/jackc/pgconn v1.14.0 // indirect
-	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgproto3/v2 v2.3.2 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20231201235250-de7065d80cb9 // indirect
-	github.com/jackc/pgtype v1.14.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
@@ -102,7 +96,7 @@ require (
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.18.0 // indirect
+	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect

@@ -23,6 +23,16 @@ func ToJsonString(input interface{}) (string, error) {
 	}
 }
 
+func ToMap(input interface{}) (map[string]interface{}, error) {
+	data, err := ToJsonString(input)
+	if err != nil {
+		return nil, err
+	}
+	var result map[string]interface{}
+	err = json.Unmarshal([]byte(data), &result)
+	return result, err
+}
+
 func ToJsonBytes(input interface{}) ([]byte, error) {
 	if jsonBytes, err := json.Marshal(input); err != nil {
 		log.Error("Error marshaling JSON:", err)

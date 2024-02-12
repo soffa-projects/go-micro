@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/soffa-projects/go-micro/di"
 	"github.com/soffa-projects/go-micro/util/h"
+	"github.com/swaggo/swag"
 	"os"
 	"os/signal"
 	"syscall"
@@ -24,11 +25,12 @@ type Cfg struct {
 	MultiTenant                bool
 	TablePrefix                string
 	EnableDiscovery            bool
+	BasePath                   string
 	DisableRouter              bool
 	DisableJwtFilter           bool
 	CorsDisabled               bool
-	SwaggerDisabled            bool
 	DisableImplicitTransaction bool
+	SwaggerSpec                *swag.Spec
 }
 
 // ----------------------------------------------

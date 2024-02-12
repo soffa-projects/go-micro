@@ -1,18 +1,16 @@
 package adapters
 
 import (
-	_ "github.com/jackc/pgx/v5"
-	"github.com/pressly/goose/v3"
-	"github.com/soffa-projects/go-micro/micro"
-	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
-	"io/fs"
-	"log"
-	"os"
-	"strings"
-	"time"
+  _ "github.com/jackc/pgx/v5"
+  "github.com/onrik/gorm-logrus"
+  "github.com/pressly/goose/v3"
+  log "github.com/sirupsen/logrus"
+  "github.com/soffa-projects/go-micro/micro"
+  "gorm.io/driver/postgres"
+  "gorm.io/driver/sqlite"
+  "gorm.io/gorm"
+  "io/fs"
+  "strings"
 )
 
 type adapter struct {
@@ -164,7 +162,11 @@ func (a adapter) Migrate(fs fs.FS, location string, migrationsTable string) {
 	cnx, err := a.internal.DB()
 	dir := location
 	if err = goose.Up(cnx, dir, goose.WithAllowMissing()); err != nil {
-		log.Fatal(err)
+		if err.Error() == "no migration files found" {
+			log.Warnf("no migration files found in %s", dir)
+		} else {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -195,19 +197,8 @@ func createLink(url string, dbschema string) *gorm.DB {
 		log.Fatalf("unsupported database type: %s", tenantUrl)
 	}
 
-	dbLogger := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
-		logger.Config{
-			SlowThreshold:             time.Second * 1, // Slow SQL threshold
-			LogLevel:                  logger.Silent,   // Log level
-			IgnoreRecordNotFoundError: true,            // Ignore ErrRecordNotFound error for logger
-			//ParameterizedQueries:      true,            // Don't include params in the SQL log
-			Colorful: false, // Disable color
-		},
-	)
-
 	gdb, err := gorm.Open(dialector, &gorm.Config{
-		Logger: dbLogger,
+		Logger: gorm_logrus.New(),
 	})
 
 	if err == nil && supportSchema && dbschema != "" {

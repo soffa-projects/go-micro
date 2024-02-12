@@ -2,6 +2,7 @@ package micro
 
 import (
 	log "github.com/sirupsen/logrus"
+	"github.com/swaggo/swag"
 	"net/http"
 	"strings"
 )
@@ -41,9 +42,10 @@ type JwtCfg struct {
 type RouterConfig struct {
 	Cors                       bool
 	RemoveTrailSlash           bool
+	BasePath                   string
 	DisableImplicitTransaction bool
 	BodyLimit                  string
-	Swagger                    bool
+	SwaggerSpec                *swag.Spec
 	MultiTenant                bool
 	//Prometheus       *PrometheusCfg
 	//JwtAuth    bool
