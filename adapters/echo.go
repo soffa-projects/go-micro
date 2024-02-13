@@ -126,6 +126,8 @@ func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 
 			c.Set(micro.TenantId, tenantId)
 			c.Set(micro.AuthKey, auth)
+
+			log.Infof("tenant = %s", tenantId)
 			return next(c)
 		}
 	})
@@ -194,17 +196,20 @@ func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 			return func(c echo.Context) error {
 				auth := c.Get(micro.AuthKey).(*micro.Authentication)
 				if auth.Bearer == "" {
+					log.Infof("no bearer found in request, skipping jwt filter")
 					return next(c)
 				}
 				parts := strings.Split(auth.Bearer, ".")
 				if len(parts) < 3 {
 					// maybe it's a basic auth
+					log.Infof("a non no jwt bearer token found in request, skipping jwt filter")
 					return next(c)
 				}
 
 				skipSignature := !env.Production && micro.Get(micro.InsecureJwtDev) == "true"
 				data, err := env.TokenProvider.Decode(auth.Bearer, !skipSignature)
 				if err != nil {
+					log.Errorf("error decoding jwt token: %s", err.Error())
 					return c.JSON(http.StatusUnauthorized, err.Error())
 				}
 
@@ -230,8 +235,11 @@ func NewEchoAdapter(env *micro.Env, config micro.RouterConfig) micro.Router {
 					auth.Permissions = strings.Split(value.(string), ",")
 				}
 				if value, ok := h.MapLookup(data, "tenant", "tenant_id", "tenant-id", "tenantId"); ok {
+					log.Infof("tenant found in jwt token: %s", value.(string))
 					c.Set(micro.TenantId, value.(string))
 				}
+
+				log.Infof("current request is fully authenticated")
 				c.Set(micro.AuthKey, auth)
 				return next(c)
 			}
