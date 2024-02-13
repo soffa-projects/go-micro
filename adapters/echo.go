@@ -336,7 +336,13 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream) 
 			return echo.NewHTTPError(http.StatusNotFound, "no_upstream_found")
 		}
 
-		chain := h.F(url.JoinPath(upstream.Uri, strings.TrimPrefix(requestUri, upstream.Prefix)))
+		var chain string
+		if upstream.Strip {
+			chain = h.F(url.JoinPath(upstream.Uri, strings.TrimPrefix(requestUri, upstream.Prefix)))
+		} else {
+			chain = h.F(url.JoinPath(upstream.Uri, requestUri))
+		}
+
 		if requestQuery != "" {
 			chain = strings.Join([]string{chain, requestQuery}, "?")
 		}

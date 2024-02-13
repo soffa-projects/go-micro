@@ -82,6 +82,7 @@ type Upstream struct {
 	Id     string
 	Uri    string
 	Prefix string
+	Strip  bool
 }
 
 func NewRouterUpstream(data map[string]*Upstream) *RouterUpstream {
