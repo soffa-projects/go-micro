@@ -215,12 +215,12 @@ func setupRedis(env *micro.Env, cfg micro.Cfg) {
 	env.RedisClient = rdb
 	if cfg.EnableDiscovery {
 		env.DiscoverySericeName = micro.DiscoveryServicePrefix + env.AppName
-		hostname := h.GetEnv("SERVICE_HOST", "RAILWAY_PRIVATE_DOMAIN", "RAILWAY_PUBLIC_DOMAIN")
+		hostname := h.GetEnv("APP_PRIVATE_DOMAIN", "APP_DOMAIN", "RAILWAY_PRIVATE_DOMAIN", "RAILWAY_PUBLIC_DOMAIN")
 		if hostname == "" {
 			hostname = "localhost"
 		}
 		env.DiscoveryServiceUrl = fmt.Sprintf("%s:%d", hostname, env.ServerPort)
-
+		log.Infof("DISCROVERY_URL set to %s", env.DiscoveryServiceUrl)
 	}
 }
 
