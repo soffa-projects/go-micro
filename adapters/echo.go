@@ -323,7 +323,7 @@ func (r *echoRouterAdapter) Group(path string, filters ...micro.MiddlewareFunc) 
 	}
 }
 
-func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream) {
+func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream, middlewares ...micro.MiddlewareFunc) {
 	r.e.Any(path, func(c echo.Context) error {
 		uriParts := strings.Split(c.Request().URL.Path, "?")
 		requestUri := uriParts[0]
@@ -337,10 +337,10 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream) 
 		}
 
 		var chain string
-    basePath := strings.TrimPrefix(requestUri, upstream.Prefix)
-    alwayStrip := strings.HasPrefix(basePath, "/swagger") || strings.HasPrefix(basePath, "/health")
+		basePath := strings.TrimPrefix(requestUri, upstream.Prefix)
+		alwayStrip := strings.HasPrefix(basePath, "/swagger") || strings.HasPrefix(basePath, "/health")
 
-		if upstream.Strip || alwayStrip{
+		if upstream.Strip || alwayStrip {
 			chain = h.F(url.JoinPath(upstream.Uri, basePath))
 		} else {
 			chain = h.F(url.JoinPath(upstream.Uri, requestUri))
@@ -379,7 +379,7 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream) 
 		}
 
 		return nil
-	})
+	}, createMiddlewares(middlewares)...)
 }
 
 func (r *echoRouterAdapter) Use(filter micro.MiddlewareFunc) {

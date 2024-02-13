@@ -22,7 +22,7 @@ type Router interface {
 	Shutdown() error
 	Group(path string, filters ...MiddlewareFunc) BaseRouter
 	Use(filter MiddlewareFunc)
-	Proxy(path string, upstreams *RouterUpstream)
+	Proxy(path string, upstreams *RouterUpstream, filters ...MiddlewareFunc)
 }
 
 type BaseRouter interface {
