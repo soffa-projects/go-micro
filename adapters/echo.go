@@ -337,8 +337,11 @@ func (r *echoRouterAdapter) Proxy(path string, upstreams *micro.RouterUpstream) 
 		}
 
 		var chain string
-		if upstream.Strip {
-			chain = h.F(url.JoinPath(upstream.Uri, strings.TrimPrefix(requestUri, upstream.Prefix)))
+    basePath := strings.TrimPrefix(requestUri, upstream.Prefix)
+    alwayStrip := strings.HasPrefix(basePath, "/swagger") || strings.HasPrefix(basePath, "/health")
+
+		if upstream.Strip || alwayStrip{
+			chain = h.F(url.JoinPath(upstream.Uri, basePath))
 		} else {
 			chain = h.F(url.JoinPath(upstream.Uri, requestUri))
 		}
