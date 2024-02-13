@@ -11,9 +11,15 @@ type EntityList[T any] struct {
 }
 
 type FilterInput struct {
-	Where string
-	Args  []interface{}
-	Page  string
-	Sort  string
-	Count int
+	Where string        `json:"where" query:"where" validate:"required"`
+	Args  []interface{} `json:"args" query:"args"`
+	Page  int           `json:"page" query:"page"`
+	Sort  string        `json:"sort" query:"sort"`
+	Count int           `json:"count" query:"count"`
+}
+
+type PagingInput struct {
+	Page  int    `json:"page" query:"page"`
+	Sort  string `json:"sort" query:"sort"`
+	Count int    `json:"count" query:"count"`
 }

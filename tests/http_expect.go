@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/soffa-projects/go-micro/micro"
+	"github.com/soffa-projects/go-micro/schema"
 	"github.com/soffa-projects/go-micro/util/digest"
 	"github.com/soffa-projects/go-micro/util/h"
 	"net/http"
@@ -84,6 +85,7 @@ type CrudTestConfig struct {
 	GetListPath string
 	CreateInput h.Map
 	UpdateInput h.Map
+	SearchInput *schema.FilterInput
 }
 
 func (f *HttpExpect) CRUD(path string, config CrudTestConfig) {
@@ -116,6 +118,11 @@ func (f *HttpExpect) CRUD(path string, config CrudTestConfig) {
 		}
 	}
 
+	if config.SearchInput != nil {
+		f.POST(fmt.Sprintf("%s/search", path), config.SearchInput).
+			BearerAuth(config.Bearer).Expect().IsOK().
+			JSON().Path(config.GetListPath).Array().NotEmpty()
+	}
 	f.DELETE(idPath).
 		BearerAuth(config.Bearer).Expect().IsOK().JSON().Path("$.id").String().IsEqual(modelId)
 

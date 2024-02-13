@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"github.com/oleiade/reflections"
-	log "github.com/sirupsen/logrus"
 	"github.com/soffa-projects/go-micro/micro"
 	"github.com/soffa-projects/go-micro/schema"
 	"github.com/soffa-projects/go-micro/util/errors"
@@ -10,13 +9,39 @@ import (
 	"github.com/soffa-projects/go-micro/util/ids"
 )
 
-func GetEntityList[T any](c micro.Ctx, filter ...schema.FilterInput) schema.EntityList[T] {
+func CRUD[Dto any, CreateDto any, UpdateDto any](g micro.BaseRouter) {
+	g.GET("", func(ctx micro.Ctx, input schema.PagingInput) schema.EntityList[Dto] {
+		return GetEntityList[Dto](ctx, input)
+	})
+	g.POST("/search", func(ctx micro.Ctx, filter schema.FilterInput) schema.EntityList[Dto] {
+		return SearchEntity[Dto](ctx, filter)
+	})
+	g.POST("", func(ctx micro.Ctx, input CreateDto) Dto {
+		var model Dto
+		return CreateEntity(ctx, input, model)
+	})
+	g.DELETE("/:id", func(ctx micro.Ctx, input schema.IdModel) schema.IdModel {
+		return DeleteEntity[Dto](ctx, input)
+	})
+	g.PATCH("/:id", func(ctx micro.Ctx, input UpdateDto) Dto {
+		return UpdateEntity[Dto](ctx, input)
+	})
+}
+
+func GetEntityList[T any](c micro.Ctx, paging schema.PagingInput) schema.EntityList[T] {
 	db := c.CurrentDB()
 	var data []T
-	q := micro.Query{}
-	if len(filter) > 0 {
-		q.W = filter[0].Where
-		q.Args = filter[0].Args
+	page := 1
+	limit := 1000
+	if paging.Count > 0 {
+		limit = paging.Count
+	}
+	if paging.Page > 1 {
+		page = paging.Page
+	}
+	q := micro.Query{
+		Offset: int64((page - 1) * limit),
+		Limit:  int64(limit),
 	}
 	h.RaiseAny(db.Find(&data, q))
 	return schema.EntityList[T]{
@@ -24,27 +49,22 @@ func GetEntityList[T any](c micro.Ctx, filter ...schema.FilterInput) schema.Enti
 	}
 }
 
-func FilterEntityList[T any](c micro.Ctx, criteria any) schema.EntityList[T] {
+func SearchEntity[T any](c micro.Ctx, input schema.FilterInput) schema.EntityList[T] {
 	db := c.CurrentDB()
 	var data []T
-	q := micro.Query{}
-	if criteria != nil {
-		fields := h.F(h.ToMap(criteria))
-		if len(fields) > 0 {
-			q.W = "1=1"
-			for k, v := range fields {
-				if !h.IsEmpty(v) {
-					q.W += " AND " + k + " = ?"
-					q.Args = append(q.Args, v)
-				}
-			}
-		}
+	page := 1
+	limit := 1000
+	if input.Count > 0 {
+		limit = input.Count
 	}
-	url := c.Request().URL.Query()
-	page := url.Get("page")
-	limit := url.Get("limit")
-	if page != "" && limit != "" {
-		log.Debugf("fetchin paginated data: page=%v, limit=%v", page, limit)
+	if input.Page > 1 {
+		page = input.Page
+	}
+	q := micro.Query{
+		W:      input.Where,
+		Args:   input.Args,
+		Offset: int64((page - 1) * limit),
+		Limit:  int64(limit),
 	}
 	h.RaiseAny(db.Find(&data, q))
 	return schema.EntityList[T]{
